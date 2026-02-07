@@ -78,6 +78,13 @@ run:
 	RUSTDOCFLAGS="{{RUSTDOCFLAGS_BASE}}" \
 	bevy run
 
+# Run native via Bevy CLI, show wireframes of colliders
+run-colliders:
+	@env \
+	RUSTFLAGS="{{RUSTFLAGS_BASE}}" \
+	RUSTDOCFLAGS="{{RUSTDOCFLAGS_BASE}}" \
+	bevy run -- --debug-colliders
+
 # Run web via Bevy CLI
 # Bevy CLI handles building to wasm32-unknown-unknown and serving locally.
 run-web:

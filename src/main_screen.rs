@@ -72,31 +72,15 @@ fn go_to_play(_: On<Activate>, mut next: ResMut<NextState<Screen>>) {
     next.set(Screen::Gameplay);
 }
 
-fn setup_help(
-    mut commands: Commands,
-    known_toolips: Res<TooltipMap>,
-    mut stack: ResMut<TooltipStack>,
-) {
-    commands.spawn((
-        DespawnOnExit(Screen::Help),
-        Node {
-            display: Display::Flex,
-            flex_direction: FlexDirection::Column,
-            width: percent(100),
-            height: percent(100),
-            row_gap: px(10),
-            ..Default::default()
-        },
-        ThemeBackgroundColor(tokens::WINDOW_BG),
-        children![Text::new("Some text to explain how to play the game")],
-    ));
+fn setup_help(commands: Commands, known_toolips: Res<TooltipMap>, mut stack: ResMut<TooltipStack>) {
     spawn_tooltip(
         commands,
         &known_toolips.tooltips,
         &mut stack.entities,
-        "Some text containing clickable words, and non clickable words\nand a line break",
+        "Some text to explain how to play the game containing clickable words, and non clickable words\nand a line break",
         (px(0), px(0)),
         false,
+        Screen::Help,
     );
 }
 

@@ -95,6 +95,7 @@ pub fn spawn_tooltip(
     text: &str,
     at: (Val, Val),
     closable: bool,
+    screen: Screen,
 ) {
     let font_size = 9.0;
     let entity = commands
@@ -109,9 +110,10 @@ pub fn spawn_tooltip(
                 border: UiRect::all(Val::Px(3.0)),
                 ..Default::default()
             },
-            ZIndex(stack.len() as i32 + 1),
+            ZIndex(stack.len() as i32 + 1 - if closable { 0 } else { 1 }),
             ThemeBackgroundColor(TOOLTIP_CLICKABLE_BG),
             ThemeBorderColor(TOOLTIP_BORDER),
+            DespawnOnExit(screen),
         ))
         .with_children(|v| {
             for line in text.split('\n') {
@@ -149,7 +151,8 @@ pub fn spawn_tooltip(
                                         &mut stack.entities,
                                         &t,
                                         (px(mouse.x), px(mouse.y)),
-                                        true
+                                        true,
+                                        screen
                                     );
                                 }
                             },

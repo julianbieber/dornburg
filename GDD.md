@@ -33,6 +33,9 @@ As a progression to make the next stages harder, you gather 3 different bones in
 
 As you progress through stages, introduce more physics concepts that impact the player movement.
 
+At the end of every stage, you ask the skull: Are you schiller? And it responds with gibberish text.
+At the end of the game you find, that the original skull is Schiller.
+
 ## Win/Lose Conditions
 Player wins a stage by reaching/gathering the available bones
 Player wins the game by winning all stages

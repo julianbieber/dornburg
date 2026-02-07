@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 avian2d = "0.6.0-rc.1"
 bevy = {version = "0.18", features = ["experimental_bevy_feathers"]}
+clap = { version = "4.5.57", features = ["derive"] }
 # Set max log levels. This helps avoid unwanted low-severity log spam, which can affect performance.
 log = { version = "0.4", features = [
     "max_level_debug",
