@@ -1,6 +1,9 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
+#[derive(Component)]
+pub struct PlayerMarker;
+
 pub fn spawn_player(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -12,5 +15,6 @@ pub fn spawn_player(
         RigidBody::Dynamic,
         MeshMaterial2d(materials.add(Color::srgb(0.0, 0.2, 0.5))),
         Transform::from_translation(Vec3::X * -100.0),
+        PlayerMarker,
     ));
 }

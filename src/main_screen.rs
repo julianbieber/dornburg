@@ -9,6 +9,7 @@ use bevy::{
 };
 
 use crate::{
+    RequiredAssets,
     screens::Screen,
     tooltip::{TooltipPlugin, *},
 };
@@ -68,8 +69,21 @@ fn go_to_help(_: On<Activate>, mut next: ResMut<NextState<Screen>>) {
     next.set(Screen::Help);
 }
 
-fn go_to_play(_: On<Activate>, mut next: ResMut<NextState<Screen>>) {
-    next.set(Screen::Gameplay);
+fn go_to_play(
+    _: On<Activate>,
+    mut next: ResMut<NextState<Screen>>,
+    required: Res<RequiredAssets>,
+    asset_server: Res<AssetServer>,
+) {
+    if required
+        .levels
+        .iter()
+        .all(|l| asset_server.is_loaded_with_dependencies(l.id()))
+    {
+        next.set(Screen::Gameplay);
+    } else {
+        warn!("Not all required levels loaded try again soon");
+    }
 }
 
 fn setup_help(commands: Commands, known_toolips: Res<TooltipMap>, mut stack: ResMut<TooltipStack>) {

@@ -1,11 +1,14 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-/// A level is initialized from a greyscale image.
-/// 0: Terrain
-/// 255: No Terrain
-/// 60: Start
-/// 180: End/Checkpoint
+use crate::RequiredAssets;
+
+/// A level is initialized from an image.
+/// Compatible with the default color scale of rx.
+/// 1A1C2C: Terrain
+/// 000000: No Terrain
+/// 566C86: Spawn
+/// 333C57: End/Checkpoint
 ///
 /// The image is transformed into a mesh, with 1 vertex per pixel
 /// adjacent vertices are conencted into triangles
@@ -22,7 +25,22 @@ pub fn spawn_level(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    images: Res<Assets<Image>>,
+    required: Res<RequiredAssets>,
 ) {
+    let level = images.get(required.levels.first().unwrap()).unwrap();
+    let terrain = Color::Srgba(Srgba::hex("#1A1C2C").unwrap());
+
+    for y in 0..level.height() {
+        for x in 0..level.width() {
+            if let Ok(color) = level.get_color_at(x, y) {
+                if color.to_srgba() != terrain.to_srgba() {
+                    dbg!(color, terrain);
+                }
+            }
+        }
+    }
+
     commands.spawn((
         Mesh2d(meshes.add(Rectangle::new(2000.0, 20.0))),
         Collider::rectangle(2000.0, 20.0),
