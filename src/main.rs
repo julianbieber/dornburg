@@ -5,7 +5,9 @@ use crate::{gameplay::GameplayPlugin, screens::ScreenPlugin};
 
 mod gameplay;
 mod main_screen;
+mod player;
 mod screens;
+mod terrain;
 mod tooltip;
 
 #[derive(Parser, Debug, Resource, Clone, Copy)]
