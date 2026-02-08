@@ -19,6 +19,8 @@ struct Opts {
 fn main() -> AppExit {
     let opts = Opts::parse();
     App::new()
+        .insert_resource(RequiredAssets { levels: Vec::new() })
+        .add_systems(Startup, load_levels)
         .add_plugins((
             DefaultPlugins,
             FeathersPlugins,
@@ -26,4 +28,14 @@ fn main() -> AppExit {
             GameplayPlugin { opts },
         ))
         .run()
+}
+
+#[derive(Resource)]
+pub struct RequiredAssets {
+    pub levels: Vec<Handle<Image>>,
+}
+
+fn load_levels(asset_server: Res<AssetServer>, mut required: ResMut<RequiredAssets>) {
+    let example = asset_server.load("levels/level_example.png");
+    required.levels.push(example);
 }
