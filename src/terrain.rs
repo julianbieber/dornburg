@@ -47,9 +47,7 @@ pub fn spawn_level(
     for y in 0..level.height() {
         for x in 0..level.width() {
             if let Ok(color) = level.get_color_at(x, y) {
-                if color.distance(&terrain) <= 0.0001 {
-                    voxels.set(x, y, true);
-                }
+                voxels.set(x, y, color.distance(&terrain) <= 0.0001);
             }
         }
     }
@@ -94,8 +92,8 @@ pub fn update_terrain(
             let x_f = x as f32 / 128.0;
             for y in 0..128 {
                 let voxel_position = Vec2::new(
-                    x as f32 - 64.0,        // + transform.translation.x,
-                    y as f32 * -1.0 + 63.0, // + transform.translation.y,
+                    x as f32 - 64.0 + transform.translation.x,
+                    -(y as f32) + 63.0 + transform.translation.y,
                 ) * 20.0;
 
                 if player.translation.xy().distance_squared(voxel_position) < 300.0 * 300.0 {
@@ -189,7 +187,6 @@ impl VoxelizedView {
     fn set(&mut self, x: u32, y: u32, v: bool) {
         assert!(x < 128 && y < 128);
         let v = v as u128;
-        let v = v as u128;
         self.voxels[x as usize] = (self.voxels[x as usize] & !(1 << y)) | (v << y);
     }
 
@@ -200,7 +197,7 @@ impl VoxelizedView {
                 if self.get(x, y) {
                     coordinates.push(IVec2 {
                         x: x as i32 - 64,
-                        y: y as i32 * -1 + 63,
+                        y: -(y as i32) + 63,
                     });
                 }
             }
