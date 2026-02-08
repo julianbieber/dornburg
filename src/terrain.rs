@@ -8,7 +8,7 @@ use bevy::{
     sprite_render::Material2d,
 };
 
-use crate::RequiredAssets;
+use crate::{RequiredAssets, player::PlayerMarker};
 
 /// A level is initialized from an image.
 /// Compatible with the default color scale of rx.
@@ -20,13 +20,13 @@ use crate::RequiredAssets;
 /// adjacent vertices are conencted into triangles
 /// Vertices without adjacent vertices are expanded to a quad
 ///
-/// The complete level terrain is a single mesh.
+/// The complete level terrain is a single rectangle.
 ///
-/// Modifying the mesh is done by moving the vertices along their normal vector.
+/// Modifying the terrain is done by growing or shrinking the islands according to cellular automaton rules and a nosie function.
 ///
-/// Coloring is done via a fragment shader based on the screen coordinates + camera offset, so that vertex overlaps dont create z fighting.
+/// Coloring is done via a fragment shader based on the screen coordinates + camera offset.
 ///
-/// We can recreate a collider from the mesh for each frame, if too expensive recreate in background once the previous has been calculated. So that the collider stays somewhat close to the visuals.
+/// We create a collision shape based on the voxels each frame.
 pub fn spawn_level(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -47,25 +47,106 @@ pub fn spawn_level(
     for y in 0..level.height() {
         for x in 0..level.width() {
             if let Ok(color) = level.get_color_at(x, y) {
-                if color.distance(&terrain) <= 0.0001 {
-                    voxels.set(x, y, true);
-                }
+                voxels.set(x, y, color.distance(&terrain) <= 0.0001);
             }
         }
     }
 
-    commands.spawn((
-        Mesh2d(meshes.add(Rectangle::new(1280.0 * 2.0, 1280.0 * 2.0))),
-        voxels.collider(),
-        RigidBody::Static,
-        MeshMaterial2d(materials.add(TerrainMaterial {
-            terrain: images.add(voxels.as_tex()),
-        })),
-        // Transform::from_translation(Vec3::Y * ),
-    ));
+    if let Some(collider) = voxels.collider() {
+        commands.spawn((
+            Mesh2d(meshes.add(Rectangle::new(1280.0 * 2.0, 1280.0 * 2.0))),
+            collider,
+            RigidBody::Static,
+            MeshMaterial2d(materials.add(TerrainMaterial {
+                terrain: images.add(voxels.as_tex()),
+            })),
+            voxels, // Transform::from_translation(Vec3::Y * ),
+        ));
+    } else {
+        commands.spawn((
+            Mesh2d(meshes.add(Rectangle::new(1280.0 * 2.0, 1280.0 * 2.0))),
+            RigidBody::Static,
+            MeshMaterial2d(materials.add(TerrainMaterial {
+                terrain: images.add(voxels.as_tex()),
+            })),
+            voxels, // Transform::from_translation(Vec3::Y * ),
+        ));
+    }
 }
 
-struct VoxelizedView {
+pub fn update_terrain(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut terrain: Query<(
+        Entity,
+        &mut VoxelizedView,
+        &mut MeshMaterial2d<TerrainMaterial>,
+        &Transform,
+    )>,
+    mut materials: ResMut<Assets<TerrainMaterial>>,
+    mut images: ResMut<Assets<Image>>,
+    player: Single<&Transform, With<PlayerMarker>>,
+) {
+    for (entity, mut voxels, mut mat, transform) in &mut terrain {
+        for x in 0..128 {
+            let x_f = x as f32 / 128.0;
+            for y in 0..128 {
+                let voxel_position = Vec2::new(
+                    x as f32 - 64.0 + transform.translation.x,
+                    -(y as f32) + 63.0 + transform.translation.y,
+                ) * 20.0;
+
+                if player.translation.xy().distance_squared(voxel_position) < 300.0 * 300.0 {
+                    continue;
+                }
+
+                let s = voxels.get_surrounding(x, y) as f32 / 9.0 + 1.0;
+                if s < 1.2 {
+                    continue;
+                }
+                let y_f = y as f32 / 128.0;
+                let grow_or_shrink = dotnoise(Vec3::new(
+                    x_f * 40.0,
+                    y_f * 40.0,
+                    time.elapsed_secs() * 1.01,
+                )) * s;
+                if grow_or_shrink < -4.0 {
+                    voxels.set(x, y, false);
+                } else if grow_or_shrink > 4. {
+                    voxels.set(x, y, true)
+                }
+            }
+        }
+        if let Some(collider) = voxels.collider() {
+            commands
+                .get_entity(entity)
+                .unwrap()
+                .remove::<Collider>()
+                .insert(collider);
+        } else {
+            commands.get_entity(entity).unwrap().remove::<Collider>();
+        }
+        mat.0 = materials.add(TerrainMaterial {
+            terrain: images.add(voxels.as_tex()),
+        })
+    }
+}
+
+fn dotnoise(mut x: Vec3) -> f32 {
+    let mut v = 0.0;
+    for _ in 0..4 {
+        x = x.rotate_x(0.2).rotate_y(0.3).rotate_z(0.4);
+        v += Vec3::new(x.x.cos(), x.y.cos(), x.z.cos()).dot(Vec3::new(
+            x.y.cos(),
+            x.z.cos(),
+            x.x.cos(),
+        ));
+    }
+    v
+}
+
+#[derive(Component)]
+pub struct VoxelizedView {
     voxels: Vec<u128>,
 }
 
@@ -89,26 +170,43 @@ impl VoxelizedView {
         self.voxels[x as usize] & 1u128 << y > 0
     }
 
+    /// returns how many of the 9 pixels are set;
+    fn get_surrounding(&self, x: u32, y: u32) -> u8 {
+        let x = x as i32;
+        let y = y as i32;
+        let mut s = 0;
+
+        for x_o in [-1, 0, 1] {
+            for y_o in [-1, 0, 1] {
+                s += self.get_checked(x + x_o, y + y_o) as u8;
+            }
+        }
+        s
+    }
+
     fn set(&mut self, x: u32, y: u32, v: bool) {
         assert!(x < 128 && y < 128);
         let v = v as u128;
-        let v = v << y;
-        self.voxels[x as usize] |= v;
+        self.voxels[x as usize] = (self.voxels[x as usize] & !(1 << y)) | (v << y);
     }
 
-    fn collider(&self) -> Collider {
+    fn collider(&self) -> Option<Collider> {
         let mut coordinates = Vec::new();
         for x in 0..128 {
             for y in 0..128 {
                 if self.get(x, y) {
                     coordinates.push(IVec2 {
                         x: x as i32 - 64,
-                        y: y as i32 * -1 + 63,
+                        y: -(y as i32) + 63,
                     });
                 }
             }
         }
-        Collider::voxels(Vec2::new(20.0, 20.0), &coordinates)
+        if coordinates.is_empty() {
+            None
+        } else {
+            Some(Collider::voxels(Vec2::new(20.0, 20.0), &coordinates))
+        }
     }
 
     fn as_tex(&self) -> Image {
