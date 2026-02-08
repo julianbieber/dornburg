@@ -20,13 +20,13 @@ use crate::RequiredAssets;
 /// adjacent vertices are conencted into triangles
 /// Vertices without adjacent vertices are expanded to a quad
 ///
-/// The complete level terrain is a single mesh.
+/// The complete level terrain is a single rectangle.
 ///
-/// Modifying the mesh is done by moving the vertices along their normal vector.
+/// Modifying the terrain is done by growing or shrinking the islands according to cellular automaton rules and a nosie function.
 ///
-/// Coloring is done via a fragment shader based on the screen coordinates + camera offset, so that vertex overlaps dont create z fighting.
+/// Coloring is done via a fragment shader based on the screen coordinates + camera offset.
 ///
-/// We can recreate a collider from the mesh for each frame, if too expensive recreate in background once the previous has been calculated. So that the collider stays somewhat close to the visuals.
+/// We create a collision shape based on the voxels each frame.
 pub fn spawn_level(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -61,11 +61,57 @@ pub fn spawn_level(
         MeshMaterial2d(materials.add(TerrainMaterial {
             terrain: images.add(voxels.as_tex()),
         })),
-        // Transform::from_translation(Vec3::Y * ),
+        voxels, // Transform::from_translation(Vec3::Y * ),
     ));
 }
 
-struct VoxelizedView {
+pub fn update_terrain(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut terrain: Query<(
+        Entity,
+        &mut VoxelizedView,
+        &mut MeshMaterial2d<TerrainMaterial>,
+    )>,
+    mut materials: ResMut<Assets<TerrainMaterial>>,
+
+    mut images: ResMut<Assets<Image>>,
+) {
+    for (entity, mut voxels, mut mat) in &mut terrain {
+        for x in 0..128 {
+            let x_f = x as f32 / 128.0;
+            for y in 0..128 {
+                let y_f = y as f32 / 128.0;
+                let n = dotnoise(Vec3::new(x_f * 2.0, y_f * 2.0, time.elapsed_secs() * 1.01));
+                voxels.set(x, y, n > 0.0);
+            }
+        }
+        commands
+            .get_entity(entity)
+            .unwrap()
+            .remove::<Collider>()
+            .insert(voxels.collider());
+        mat.0 = materials.add(TerrainMaterial {
+            terrain: images.add(voxels.as_tex()),
+        })
+    }
+}
+
+fn dotnoise(mut x: Vec3) -> f32 {
+    let mut v = 0.0;
+    for _ in 0..4 {
+        x = x.rotate_x(0.2).rotate_y(0.3).rotate_z(0.4);
+        v += Vec3::new(x.x.cos(), x.y.cos(), x.z.cos()).dot(Vec3::new(
+            x.y.cos(),
+            x.z.cos(),
+            x.x.cos(),
+        ));
+    }
+    v
+}
+
+#[derive(Component)]
+pub struct VoxelizedView {
     voxels: Vec<u128>,
 }
 
@@ -92,8 +138,8 @@ impl VoxelizedView {
     fn set(&mut self, x: u32, y: u32, v: bool) {
         assert!(x < 128 && y < 128);
         let v = v as u128;
-        let v = v << y;
-        self.voxels[x as usize] |= v;
+        let v = v as u128;
+        self.voxels[x as usize] = (self.voxels[x as usize] & !(1 << y)) | (v << y);
     }
 
     fn collider(&self) -> Collider {

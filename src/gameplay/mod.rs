@@ -5,7 +5,7 @@ use crate::{
     Opts,
     player::spawn_player,
     screens::Screen,
-    terrain::{TerrainMaterial, spawn_level},
+    terrain::{TerrainMaterial, spawn_level, update_terrain},
 };
 
 pub struct GameplayPlugin {
@@ -23,5 +23,6 @@ impl Plugin for GameplayPlugin {
             OnEnter(Screen::Gameplay),
             (spawn_level, spawn_player).chain(),
         );
+        app.add_systems(Update, update_terrain.run_if(in_state(Screen::Gameplay)));
     }
 }
