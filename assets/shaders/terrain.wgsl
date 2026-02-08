@@ -6,6 +6,8 @@ struct VertexOutput {
 
 @group(2) @binding(0) var height_texture: texture_2d<f32>;
 @group(2) @binding(1) var height_texture_sampler: sampler;
+@group(2) @binding(2) var time_texture: texture_2d<f32>;
+@group(2) @binding(3) var time_texture_sampler: sampler;
 
 
 fn cos_s(x: vec3f) -> vec3f {
@@ -51,6 +53,7 @@ fn fragment(
     mesh: VertexOutput,
 ) -> @location(0) vec4<f32> {
     let is_set = textureSample(height_texture, height_texture_sampler, mesh.uv.yx).r > 0.5;
+    let time = textureSample(time_texture, time_texture_sampler, mesh.uv.yx).r;
 
     if is_set {
         return vec4<f32>(color(
@@ -72,7 +75,7 @@ fn fragment(
             vec3f(
                 0.0
             ),
-            dotnoise(vec3f(mesh.world_position.x, mesh.world_position.y, 0.0)*0.002)
+            dotnoise(vec3f(mesh.world_position.x*0.002, mesh.world_position.y*0.002, time))
         ), 1.0);
     } else {
         return vec4<f32>(0.0);
