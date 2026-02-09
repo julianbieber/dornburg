@@ -336,28 +336,6 @@ impl Killzones {
         self.voxels[x as usize] & 1u128 << y > 0
     }
 
-    fn get_checked(&self, x: i32, y: i32) -> bool {
-        if x < 0 || y < 0 || x >= 128 || y >= 128 {
-            return false;
-        }
-
-        self.voxels[x as usize] & 1u128 << y > 0
-    }
-
-    /// returns how many of the 9 pixels are set;
-    fn get_surrounding(&self, x: u32, y: u32) -> u8 {
-        let x = x as i32;
-        let y = y as i32;
-        let mut s = 0;
-
-        for x_o in [-1, 0, 1] {
-            for y_o in [-1, 0, 1] {
-                s += self.get_checked(x + x_o, y + y_o) as u8;
-            }
-        }
-        s
-    }
-
     fn set(&mut self, x: u32, y: u32, v: bool) {
         assert!(x < 128 && y < 128);
         let v = v as u128;

@@ -10,7 +10,6 @@ use bevy::{
 
 use crate::{
     RequiredAssets,
-    levels::LevelScreens,
     screens::Screen,
     tooltip::{TooltipPlugin, *},
 };

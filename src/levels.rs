@@ -2,7 +2,6 @@ use bevy::prelude::*;
 
 use crate::screens::Screen;
 
-///
 pub struct LevelPlugin;
 
 impl Plugin for LevelPlugin {
@@ -26,7 +25,7 @@ pub enum LevelScreens {
     None,
     Restart,
     Level,
-    Intermission,
+    // Intermission, will be used once we win a stage
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
