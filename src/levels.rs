@@ -25,7 +25,7 @@ pub enum LevelScreens {
     None,
     Restart,
     Level,
-    // Intermission, will be used once we win a stage
+    Intermission,
 }
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
