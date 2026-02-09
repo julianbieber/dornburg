@@ -3,6 +3,7 @@ use bevy::{prelude::*, sprite_render::Material2dPlugin};
 
 use crate::{
     Opts,
+    levels::{LevelPlugin, LevelScreens},
     player::spawn_player,
     screens::Screen,
     terrain::{TerrainMaterial, spawn_level, update_terrain, update_time},
@@ -16,11 +17,12 @@ impl Plugin for GameplayPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(PhysicsPlugins::default().with_length_unit(20.0));
         app.add_plugins(Material2dPlugin::<TerrainMaterial>::default());
+        app.add_plugins(LevelPlugin);
         if self.opts.debug_colliders {
             app.add_plugins(PhysicsDebugPlugin);
         }
         app.add_systems(
-            OnEnter(Screen::Gameplay),
+            OnEnter(LevelScreens::Level),
             (spawn_level, spawn_player).chain(),
         );
         app.add_systems(
