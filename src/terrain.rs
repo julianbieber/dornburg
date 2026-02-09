@@ -14,7 +14,7 @@ use crate::{RequiredAssets, levels::LevelScreens, player::PlayerMarker};
 /// Compatible with the default color scale of rx.
 /// 1A1C2C: Terrain
 /// 566C86: Spawn
-/// 333C57: End/Checkpoint
+/// 73EFF7: End/Checkpoint
 ///
 /// The image is transformed into a mesh, with 1 vertex per pixel
 /// adjacent vertices are conencted into triangles
@@ -31,8 +31,10 @@ pub fn spawn_level(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<TerrainMaterial>>,
+    mut colors: ResMut<Assets<ColorMaterial>>,
     mut images: ResMut<Assets<Image>>,
     required: Res<RequiredAssets>,
+    mut required_finishes: ResMut<RequiredFinishes>,
 ) {
     let level = images.get(required.levels.first().unwrap()).unwrap();
     if level.width() != 128 {
@@ -43,14 +45,19 @@ pub fn spawn_level(
     }
     let terrain = Color::Srgba(Srgba::hex("#1A1C2C").unwrap());
     let kill = Color::Srgba(Srgba::hex("#B13E53").unwrap());
+    let finish = Color::Srgba(Srgba::hex("#73EFF7").unwrap());
     let mut voxels = VoxelizedView::empty();
     let mut killzones = Killzones::empty();
+    let mut finishes = Vec::new();
 
     for y in 0..level.height() {
         for x in 0..level.width() {
             if let Ok(color) = level.get_color_at(x, y) {
                 voxels.set(x, y, color.distance(&terrain) <= 0.0001);
                 killzones.set(x, y, color.distance(&kill) <= 0.0001);
+                if color.distance(&finish) < 0.0001 {
+                    finishes.push(voxel_to_world(x, y));
+                }
             }
         }
     }
@@ -83,6 +90,21 @@ pub fn spawn_level(
     if let Some(collider) = killzones.collider() {
         kill_spawn.insert(collider);
     }
+
+    required_finishes.0 = finishes.len() as u32;
+    for finish in finishes {
+        commands
+            .spawn((
+                DespawnOnExit(LevelScreens::Level),
+                Mesh2d(meshes.add(Rectangle::new(20.0, 20.0))),
+                MeshMaterial2d(colors.add(Color::srgb(0.6, 0.6, 0.6))),
+                CollisionEventsEnabled,
+                Collider::rectangle(20.0, 20.0),
+                Transform::from_translation(Vec3::new(finish.x + 10.0, finish.y + 10.0, 0.0)),
+                FinishMarker,
+            ))
+            .observe(collect_finish);
+    }
 }
 
 pub fn update_time(
@@ -101,6 +123,30 @@ pub fn update_time(
                 }
                 time.set(x, y, d);
             }
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct FinishMarker;
+
+#[derive(Resource)]
+pub struct RequiredFinishes(pub u32);
+
+fn collect_finish(
+    event: On<CollisionStart>,
+    player: Single<Entity, With<PlayerMarker>>,
+    mut next: ResMut<NextState<LevelScreens>>,
+    mut commands: Commands,
+    mut required_finishes: ResMut<RequiredFinishes>,
+) {
+    if event.collider2.entity() == player.into_inner() {
+        commands.entity(event.collider1.entity()).despawn();
+        if required_finishes.0 > 0 {
+            required_finishes.0 -= 1;
+        }
+        if required_finishes.0 == 0 {
+            next.set(LevelScreens::Intermission);
         }
     }
 }

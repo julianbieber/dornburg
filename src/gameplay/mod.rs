@@ -6,7 +6,7 @@ use crate::{
     levels::{LevelPlugin, LevelScreens},
     player::spawn_player,
     screens::Screen,
-    terrain::{TerrainMaterial, spawn_level, update_terrain, update_time},
+    terrain::{RequiredFinishes, TerrainMaterial, spawn_level, update_terrain, update_time},
 };
 
 pub struct GameplayPlugin {
@@ -21,6 +21,7 @@ impl Plugin for GameplayPlugin {
         if self.opts.debug_colliders {
             app.add_plugins(PhysicsDebugPlugin);
         }
+        app.insert_resource(RequiredFinishes(0));
         app.add_systems(
             OnEnter(LevelScreens::Level),
             (spawn_level, spawn_player).chain(),
