@@ -8,6 +8,8 @@ struct VertexOutput {
 @group(2) @binding(1) var height_texture_sampler: sampler;
 @group(2) @binding(2) var time_texture: texture_2d<f32>;
 @group(2) @binding(3) var time_texture_sampler: sampler;
+@group(2) @binding(4) var kill_texture: texture_2d<f32>;
+@group(2) @binding(5) var kill_texture_sampler: sampler;
 
 
 fn cos_s(x: vec3f) -> vec3f {
@@ -41,7 +43,7 @@ fn dotnoise(x: vec3f) -> f32 {
     var a = 0.0;
     var p = x;
     for (var i: i32 = 0; i < 4; i = i + 1) {
-        p = p * rot(vec3f(0.2,0.3,0.4));
+        p = p * rot(x+a);
         a += dot(cos(p), cos(p.yzx));
     }
 
@@ -54,6 +56,31 @@ fn fragment(
 ) -> @location(0) vec4<f32> {
     let is_set = textureSample(height_texture, height_texture_sampler, mesh.uv.yx).r > 0.5;
     let time = textureSample(time_texture, time_texture_sampler, mesh.uv.yx).r;
+    let kill = textureSample(kill_texture, kill_texture_sampler, mesh.uv.yx).r > 0.5;
+
+    if kill {
+        return vec4<f32>(color(
+            vec3f(
+                0.26518637,
+                0.0,
+                0.0,
+            ),
+            vec3f(
+                0.95800865,
+                0.30069998,
+                0.0,
+            ),
+            vec3f(
+                0.8457962,
+                0.83376676,
+                0.11107275,
+            ),
+            vec3f(
+                0.0
+            ),
+            dotnoise(vec3f(mesh.world_position.x * 0.02, mesh.world_position.y * 0.02, time*10.0))
+        ), 1.0);
+    }
 
     if is_set {
         return vec4<f32>(color(
@@ -75,7 +102,7 @@ fn fragment(
             vec3f(
                 0.0
             ),
-            dotnoise(vec3f(mesh.world_position.x*0.002, mesh.world_position.y*0.002, time))
+            dotnoise(vec3f(mesh.world_position.x * 0.002, mesh.world_position.y * 0.002, time))
         ), 1.0);
     } else {
         return vec4<f32>(0.0);
