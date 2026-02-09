@@ -4,6 +4,7 @@ use clap::Parser;
 use crate::{gameplay::GameplayPlugin, screens::ScreenPlugin};
 
 mod gameplay;
+mod levels;
 mod main_screen;
 mod player;
 mod screens;

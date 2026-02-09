@@ -8,7 +8,7 @@ use bevy::{
     sprite_render::Material2d,
 };
 
-use crate::{RequiredAssets, player::PlayerMarker};
+use crate::{RequiredAssets, levels::LevelScreens, player::PlayerMarker};
 
 /// A level is initialized from an image.
 /// Compatible with the default color scale of rx.
@@ -42,41 +42,46 @@ pub fn spawn_level(
         panic!("levels must be 128p high");
     }
     let terrain = Color::Srgba(Srgba::hex("#1A1C2C").unwrap());
+    let kill = Color::Srgba(Srgba::hex("#B13E53").unwrap());
     let mut voxels = VoxelizedView::empty();
+    let mut killzones = Killzones::empty();
 
     for y in 0..level.height() {
         for x in 0..level.width() {
             if let Ok(color) = level.get_color_at(x, y) {
                 voxels.set(x, y, color.distance(&terrain) <= 0.0001);
+                killzones.set(x, y, color.distance(&kill) <= 0.0001);
             }
         }
     }
 
     let time = TimeDiluationMap::zero();
 
+    let mut spawn_command = commands.spawn((
+        DespawnOnExit(LevelScreens::Level),
+        Mesh2d(meshes.add(Rectangle::new(1280.0 * 2.0, 1280.0 * 2.0))),
+        RigidBody::Static,
+        MeshMaterial2d(materials.add(TerrainMaterial {
+            terrain: images.add(voxels.as_tex()),
+            time: images.add(time.as_tex()),
+            kill: images.add(killzones.as_tex()),
+        })),
+        voxels.clone(),
+        time,
+    ));
+
     if let Some(collider) = voxels.collider() {
-        commands.spawn((
-            Mesh2d(meshes.add(Rectangle::new(1280.0 * 2.0, 1280.0 * 2.0))),
-            collider,
-            RigidBody::Static,
-            MeshMaterial2d(materials.add(TerrainMaterial {
-                terrain: images.add(voxels.as_tex()),
-                time: images.add(time.as_tex()),
-            })),
-            voxels, // Transform::from_translation(Vec3::Y * ),
-            time,
-        ));
-    } else {
-        commands.spawn((
-            Mesh2d(meshes.add(Rectangle::new(1280.0 * 2.0, 1280.0 * 2.0))),
-            RigidBody::Static,
-            MeshMaterial2d(materials.add(TerrainMaterial {
-                terrain: images.add(voxels.as_tex()),
-                time: images.add(time.as_tex()),
-            })),
-            voxels, // Transform::from_translation(Vec3::Y * ),
-            time,
-        ));
+        spawn_command.insert(collider);
+    }
+
+    let mut kill_spawn = commands.spawn((
+        DespawnOnExit(LevelScreens::Level),
+        killzones.clone(),
+        CollisionEventsEnabled,
+    ));
+    kill_spawn.observe(player_dies);
+    if let Some(collider) = killzones.collider() {
+        kill_spawn.insert(collider);
     }
 }
 
@@ -100,6 +105,17 @@ pub fn update_time(
     }
 }
 
+fn player_dies(
+    event: On<CollisionStart>,
+    player: Single<Entity, With<PlayerMarker>>,
+    mut next: ResMut<NextState<LevelScreens>>,
+) {
+    let e = event.body2.unwrap();
+    if e == player.into_inner() {
+        next.set(LevelScreens::Restart);
+    }
+}
+
 fn voxel_to_world(x: u32, y: u32) -> Vec2 {
     Vec2::new(x as f32 - 64.0, -(y as f32) + 63.0) * 20.0
 }
@@ -115,6 +131,7 @@ pub fn update_terrain(
     )>,
     mut materials: ResMut<Assets<TerrainMaterial>>,
     mut images: ResMut<Assets<Image>>,
+    killzones: Single<&Killzones>,
     player: Single<&Transform, With<PlayerMarker>>,
 ) {
     let p = player.translation.xy();
@@ -153,6 +170,7 @@ pub fn update_terrain(
         mat.0 = materials.add(TerrainMaterial {
             terrain: images.add(voxels.as_tex()),
             time: images.add(time.as_tex()),
+            kill: images.add(killzones.as_tex()), // probably not rquired, we could get the handle of the exisitng image
         })
     }
 }
@@ -170,7 +188,7 @@ fn dotnoise(mut x: Vec3) -> f32 {
     v
 }
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct VoxelizedView {
     voxels: Vec<u128>,
 }
@@ -301,6 +319,72 @@ impl TimeDiluationMap {
     }
 }
 
+#[derive(Component, Clone)]
+pub struct Killzones {
+    voxels: Vec<u128>,
+}
+
+impl Killzones {
+    fn empty() -> Killzones {
+        Killzones {
+            voxels: vec![0; 128],
+        }
+    }
+
+    fn get(&self, x: u32, y: u32) -> bool {
+        assert!(x < 128 && y < 128);
+        self.voxels[x as usize] & 1u128 << y > 0
+    }
+
+    fn set(&mut self, x: u32, y: u32, v: bool) {
+        assert!(x < 128 && y < 128);
+        let v = v as u128;
+        self.voxels[x as usize] = (self.voxels[x as usize] & !(1 << y)) | (v << y);
+    }
+
+    fn collider(&self) -> Option<Collider> {
+        let mut coordinates = Vec::new();
+        for x in 0..128 {
+            for y in 0..128 {
+                if self.get(x, y) {
+                    coordinates.push(IVec2 {
+                        x: x as i32 - 64,
+                        y: -(y as i32) + 63,
+                    });
+                }
+            }
+        }
+        if coordinates.is_empty() {
+            None
+        } else {
+            Some(Collider::voxels(Vec2::new(20.0, 20.0), &coordinates))
+        }
+    }
+
+    fn as_tex(&self) -> Image {
+        let mut height_bytes = Vec::new();
+        for x in 0..128 {
+            for y in 0..128 {
+                height_bytes.extend_from_slice(&(self.get(x, y) as i32 as f32).to_le_bytes());
+            }
+        }
+
+        let mut i = Image::new(
+            Extent3d {
+                width: 128,
+                height: 128,
+                depth_or_array_layers: 1,
+            },
+            bevy::render::render_resource::TextureDimension::D2,
+            height_bytes,
+            bevy::render::render_resource::TextureFormat::R32Float,
+            RenderAssetUsages::all(),
+        );
+        i.sampler = ImageSampler::nearest();
+
+        i
+    }
+}
 // Terrain Shader
 
 #[derive(Asset, TypePath, AsBindGroup, Clone)]
@@ -311,6 +395,9 @@ pub struct TerrainMaterial {
     #[texture(2)]
     #[sampler(3)]
     pub time: Handle<Image>,
+    #[texture(4)]
+    #[sampler(5)]
+    pub kill: Handle<Image>,
 }
 
 impl Material2d for TerrainMaterial {

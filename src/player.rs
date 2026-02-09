@@ -1,6 +1,8 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
+use crate::levels::LevelScreens;
+
 #[derive(Component)]
 pub struct PlayerMarker;
 
@@ -10,6 +12,7 @@ pub fn spawn_player(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     commands.spawn((
+        DespawnOnExit(LevelScreens::Level),
         Mesh2d(meshes.add(Rectangle::new(20.0, 20.0))),
         Collider::rectangle(20.0, 20.0),
         RigidBody::Dynamic,
