@@ -26,3 +26,10 @@ pub fn spawn_player(
         PlayerMarker,
     ));
 }
+
+pub fn sync_camera_to_player(
+    player: Single<&Transform, (With<PlayerMarker>, Without<Camera>)>,
+    mut camera: Single<&mut Transform, (With<Camera>, Without<PlayerMarker>)>,
+) {
+    camera.translation = player.translation;
+}

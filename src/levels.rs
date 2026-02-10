@@ -150,7 +150,6 @@ fn update_timer(
 
     let word = (words_per_sec * elapsed) as usize;
     let words = &timer.1.words;
-    dbg!(words.len());
     let mut content = String::new();
     if word > 0 {
         content.push_str(words[word - 1].as_str());
