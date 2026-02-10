@@ -15,6 +15,7 @@ use crate::{RequiredAssets, levels::LevelScreens, player::PlayerMarker};
 /// 1A1C2C: Terrain
 /// 566C86: Spawn
 /// 73EFF7: End/Checkpoint
+/// B13E53: Killzone
 ///
 /// The image is transformed into a mesh, with 1 vertex per pixel
 /// adjacent vertices are conencted into triangles
@@ -46,9 +47,12 @@ pub fn spawn_level(
     let terrain = Color::Srgba(Srgba::hex("#1A1C2C").unwrap());
     let kill = Color::Srgba(Srgba::hex("#B13E53").unwrap());
     let finish = Color::Srgba(Srgba::hex("#73EFF7").unwrap());
+    let spawn_color = Color::Srgba(Srgba::hex("#566C86").unwrap());
+
     let mut voxels = VoxelizedView::empty();
     let mut killzones = Killzones::empty();
     let mut finishes = Vec::new();
+    let mut spawn = Vec2::ZERO;
 
     for y in 0..level.height() {
         for x in 0..level.width() {
@@ -57,6 +61,9 @@ pub fn spawn_level(
                 killzones.set(x, y, color.distance(&kill) <= 0.0001);
                 if color.distance(&finish) < 0.0001 {
                     finishes.push(voxel_to_world(x, y));
+                }
+                if color.distance(&spawn_color) <= 0.0001 {
+                    spawn = voxel_to_world(x, y);
                 }
             }
         }
@@ -105,7 +112,16 @@ pub fn spawn_level(
             ))
             .observe(collect_finish);
     }
+
+    commands.spawn((
+        DespawnOnExit(LevelScreens::Level),
+        Transform::from_translation(Vec3::new(spawn.x + 10.0, spawn.y + 10.0, 0.0)),
+        SpawnMarker,
+    ));
 }
+
+#[derive(Component)]
+pub struct SpawnMarker;
 
 /// A circle of radius 8 blocks (160p) should not change
 /// the area from 8-10 blocks (160p - 200p) shows crater than 1s/s change
