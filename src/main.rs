@@ -7,10 +7,10 @@ mod gameplay;
 mod levels;
 mod main_screen;
 mod player;
+mod player_controller;
 mod screens;
 mod terrain;
 mod tooltip;
-mod player_controller;
 
 #[derive(Parser, Debug, Resource, Clone, Copy)]
 struct Opts {

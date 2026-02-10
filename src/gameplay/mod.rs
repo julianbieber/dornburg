@@ -1,4 +1,4 @@
-use avian2d::prelude::{ForcePlugin, Gravity};
+use avian2d::prelude::Gravity;
 use avian2d::{PhysicsPlugins, prelude::PhysicsDebugPlugin};
 use bevy::{prelude::*, sprite_render::Material2dPlugin};
 
