@@ -40,6 +40,9 @@ on:
         description: "Deny warnings"
         default: false
         type: boolean
+  push:
+    branches:
+      - main
 
 # Cancel the release workflow when a more recent workflow begins.
 concurrency:
