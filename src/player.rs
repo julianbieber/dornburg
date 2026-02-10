@@ -1,4 +1,5 @@
 use avian2d::prelude::*;
+use avian2d::dynamics::rigid_body::Friction;
 use bevy::prelude::*;
 
 use crate::levels::LevelScreens;
@@ -16,8 +17,9 @@ pub fn spawn_player(
         Mesh2d(meshes.add(Rectangle::new(20.0, 20.0))),
         Collider::rectangle(20.0, 20.0),
         RigidBody::Dynamic,
+        Mass(1.0),
+        Friction::new(0.8),
         MeshMaterial2d(materials.add(Color::srgb(0.0, 0.2, 0.5))),
-        Transform::from_translation(Vec3::X * -100.0),
         PlayerMarker,
     ));
 }
