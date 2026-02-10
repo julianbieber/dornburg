@@ -43,7 +43,7 @@ fn dotnoise(x: vec3f) -> f32 {
     var a = 0.0;
     var p = x;
     for (var i: i32 = 0; i < 4; i = i + 1) {
-        p = p * rot(x+a);
+        p = p * rot(vec3(0.2,0.3,0.6));
         a += dot(cos(p), cos(p.yzx));
     }
 
