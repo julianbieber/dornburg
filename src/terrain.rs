@@ -107,6 +107,10 @@ pub fn spawn_level(
     }
 }
 
+/// A circle of radius 8 blocks (160p) should not change
+/// the area from 8-10 blocks (160p - 200p) shows crater than 1s/s change
+/// further blocks show 1s/s change
+/// https://graphtoy.com/?f1(x,t)=clamp((x%5E2/160-160)/45,0,1)&v1=true&f2(x,t)=4/(1+f1(x,t))-1&v2=true&f3(x,t)=min(f1(x,t)*3,f2(x,t))&v3=true&f4(x,t)=&v4=false&f5(x,t)=&v5=false&f6(x,t)=&v6=false&grid=1&coords=165.74778969058985,-0.9241138897409666,12.000000000000151
 pub fn update_time(
     player: Single<&Transform, With<PlayerMarker>>,
     mut times: Query<&mut TimeDiluationMap>,
@@ -118,10 +122,11 @@ pub fn update_time(
         for x in 0..128 {
             for y in 0..128 {
                 let voxel_position = voxel_to_world(x, y);
-                if p.distance_squared(voxel_position) < 300.0 * 300.0 {
-                    continue;
-                }
-                time.set(x, y, d);
+                let z = p.distance_squared(voxel_position);
+                let f1 = (z / 160.0 - 160.0).clamp(0.0, 1.0);
+                let f2 = 4.0 / (1.0 + f1) - 1.0;
+                let f3 = (f1 * 3.0).min(f2);
+                time.set(x, y, d * f3);
             }
         }
     }
@@ -190,16 +195,13 @@ pub fn update_terrain(
                     continue;
                 }
 
-                let s = voxels.get_surrounding(x, y) as f32 / 9.0 + 1.0;
-                if s < 1.2 {
-                    continue;
-                }
+                let s = voxels.get_surrounding(x, y);
+
                 let y_f = y as f32 / 128.0;
-                let grow_or_shrink =
-                    dotnoise(Vec3::new(x_f * 40.0, y_f * 40.0, time.get(x, y) * 1.01)) * s;
-                if grow_or_shrink < -4.0 {
+                let grow_or_shrink = dotnoise(Vec3::new(x_f * 40.0, y_f * 40.0, time.get(x, y)));
+                if s > 2 && grow_or_shrink < 0.1 {
                     voxels.set(x, y, false);
-                } else if grow_or_shrink > 4. {
+                } else if grow_or_shrink * s as f32 / 5.0 > 0.8 && s > 0 {
                     voxels.set(x, y, true)
                 }
             }
@@ -223,15 +225,18 @@ pub fn update_terrain(
 
 fn dotnoise(mut x: Vec3) -> f32 {
     let mut v = 0.0;
-    for _ in 0..4 {
-        x = x.rotate_x(0.2).rotate_y(0.3).rotate_z(0.4);
+    for i in 0..4 {
+        x = x
+            .rotate_x(0.2 * i as f32)
+            .rotate_y(0.3 * i as f32)
+            .rotate_z(0.4 * i as f32);
         v += Vec3::new(x.x.cos(), x.y.cos(), x.z.cos()).dot(Vec3::new(
             x.y.cos(),
             x.z.cos(),
             x.x.cos(),
         ));
     }
-    v
+    v.abs() / 4.0
 }
 
 #[derive(Component, Clone)]
