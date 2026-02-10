@@ -1,5 +1,5 @@
-use avian2d::prelude::*;
 use avian2d::dynamics::rigid_body::Friction;
+use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::levels::LevelScreens;
