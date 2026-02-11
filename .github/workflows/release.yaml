@@ -337,7 +337,7 @@ jobs:
       - forward-env
       - get-version
       - build
-    if: ${{ inputs.deploy_to_itch && needs.forward-env.outputs.itch_page != '' }}
+    if: ${{ needs.forward-env.outputs.itch_page != '' }}
 
     steps:
       - name: Download packages
@@ -378,7 +378,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
-    if: ${{ inputs.deploy_to_github_pages && inputs.build_for_web }}
+    if: ${{ inputs.build_for_web }}
 
     steps:
       - name: Deploy to GitHub Pages
