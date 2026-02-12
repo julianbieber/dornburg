@@ -237,21 +237,18 @@ pub fn update_terrain(
                     let grow_by_noise = n > 4.2;
                     let shrink_by_nosie = n < 0.1;
 
-                    let grow_values = [1, 3, 5];
-                    let grow_take = (n / 5.0 * grow_values.len() as f32) as usize;
-                    let shrink_values = [2, 3, 4, 5, 6, 8, 9];
-                    let shrink_take = (n / 5.0 * shrink_values.len() as f32) as usize;
+                    let values: [u8; _] = [2, 1, 4, 3, 5, 4, 6, 9, 8, 7];
 
-                    let grow_by_surrounding = grow_values
+                    let grow_values: Vec<u8> = values
                         .iter()
-                        .take(grow_take)
-                        .find(|v| **v == s)
-                        .is_some();
-                    let shrink_by_surrounding = shrink_values
-                        .iter()
-                        .take(shrink_take)
-                        .find(|v| **v == s)
-                        .is_some();
+                        .take((n / 5.0 * values.len() as f32) as usize)
+                        .copied()
+                        .collect();
+                    let shrink_take = ((5.0 - n) / 5.0 * values.len() as f32) as usize;
+                    let shrink_values: Vec<u8> = values.iter().take(shrink_take).copied().collect();
+
+                    let grow_by_surrounding = grow_values.iter().find(|v| **v == s).is_some();
+                    let shrink_by_surrounding = shrink_values.iter().find(|v| **v == s).is_some();
 
                     // if change {
                     if grow_by_surrounding && grow_by_noise {
