@@ -224,39 +224,18 @@ pub fn update_terrain(
                     let n = fbm(
                         Vec3::new(x_f, y_f, global_time.elapsed_secs()),
                         5,
-                        30.0,
+                        20.0,
                         1.2,
                         0.6,
                     );
                     max_noise = max_noise.max(n);
-
                     let c = voxels.get(x, y);
-
-                    let change = n > 3.0;
-
-                    let grow_by_noise = n > 4.2;
-                    let shrink_by_nosie = n < 0.1;
-
-                    let values: [u8; _] = [2, 1, 4, 3, 5, 4, 6, 9, 8, 7];
-
-                    let grow_values: Vec<u8> = values
-                        .iter()
-                        .take((n / 5.0 * values.len() as f32) as usize)
-                        .copied()
-                        .collect();
-                    let shrink_take = ((5.0 - n) / 5.0 * values.len() as f32) as usize;
-                    let shrink_values: Vec<u8> = values.iter().take(shrink_take).copied().collect();
-
-                    let grow_by_surrounding = grow_values.iter().find(|v| **v == s).is_some();
-                    let shrink_by_surrounding = shrink_values.iter().find(|v| **v == s).is_some();
-
-                    // if change {
-                    if grow_by_surrounding && grow_by_noise {
-                        new_voxels.set(x, y, true);
-                    } else if shrink_by_surrounding {
-                        new_voxels.set(x, y, false);
+                    if c || n > 4.3 {
+                        new_voxels.set(x, y, s >= 7);
+                    } else {
+                        new_voxels.set(x, y, s >= 4 && s < 6 || s == 1);
                     }
-                    // }
+                    // new_voxels.set(x, y, n > 4.4);
                 }
             }
             dbg!(max_noise);
@@ -345,15 +324,14 @@ impl VoxelizedView {
 
     fn get(&self, x: u32, y: u32) -> bool {
         assert!(x < 128 && y < 128);
-        self.voxels[x as usize] & 1u128 << y > 0
+        self.voxels[x as usize] & (1u128 << y) > 0
     }
 
-    fn get_checked(&self, x: i32, y: i32) -> bool {
-        if x < 0 || y < 0 || x >= 128 || y >= 128 {
-            return false;
-        }
+    fn get_checked(&self, mut x: i32, mut y: i32) -> bool {
+        x = x.clamp(0, 127);
+        y = y.clamp(0, 127);
 
-        self.voxels[x as usize] & 1u128 << y > 0
+        self.voxels[x as usize] & (1u128 << y) > 0
     }
 
     /// returns how many of the 9 pixels are set;
@@ -362,8 +340,8 @@ impl VoxelizedView {
         let y = y as i32;
         let mut s = 0;
 
-        for x_o in -size..size {
-            for y_o in -size..size {
+        for x_o in -size..=size {
+            for y_o in -size..=size {
                 s += self.get_checked(x + x_o, y + y_o) as u8;
             }
         }
