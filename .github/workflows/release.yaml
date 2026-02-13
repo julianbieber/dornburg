@@ -12,10 +12,6 @@ on:
         description: "Build for Windows (WARNING: slow!)"
         default: true
         type: boolean
-      build_for_macos:
-        description: "Build for macOS"
-        default: true
-        type: boolean
       build_for_linux:
         description: "Build for Linux"
         default: true
@@ -143,12 +139,6 @@ jobs:
             binary_ext: .exe
             package_ext: .zip
             runner: windows-latest
-
-          - platform: macos
-            targets: x86_64-apple-darwin aarch64-apple-darwin
-            app_suffix: .app/Contents/MacOS
-            package_ext: .dmg
-            runner: macos-latest
     runs-on: ${{ matrix.runner }}
     permissions:
       # Required to create a GitHub release: <https://docs.github.com/en/rest/releases/releases#create-a-release>.
@@ -160,6 +150,17 @@ jobs:
     steps:
       - name: Set up environment
         run: |
+          # Set platform build defaults based on trigger type
+          if [ '${{ github.event_name }}' = 'push' ]; then
+            echo 'is_platform_enabled=true' >> "${GITHUB_ENV}"
+          else
+            echo 'is_platform_enabled=${{
+              (matrix.platform == 'web' && inputs.build_for_web) ||
+              (matrix.platform == 'linux' && inputs.build_for_linux) ||
+              (matrix.platform == 'windows' && inputs.build_for_windows)
+            }}' >> "${GITHUB_ENV}"
+          fi
+
           # Default values:
           echo "app_binary_name=${app_binary_name:=${{ env.cargo_build_binary_name }}}" >> "${GITHUB_ENV}"
           echo "app_package_name=${app_package_name:=${app_binary_name}}" >> "${GITHUB_ENV}"
@@ -179,20 +180,6 @@ jobs:
             RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }"'-Dwarnings'
           fi
           echo "RUSTFLAGS=${RUSTFLAGS}" >> "${GITHUB_ENV}"
-
-          # macOS environment:
-          if [ '${{ matrix.platform }}' = 'macos' ]; then
-            echo 'MACOSX_DEPLOYMENT_TARGET=11.0' >> "${GITHUB_ENV}" # macOS 11.0 Big Sur is the first version to support universal binaries.
-            echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "${GITHUB_ENV}"
-          fi
-
-          # Check if building for this platform is enabled.
-          echo 'is_platform_enabled=${{
-            (matrix.platform == 'web' && inputs.build_for_web) ||
-            (matrix.platform == 'linux' && inputs.build_for_linux) ||
-            (matrix.platform == 'windows' && inputs.build_for_windows) ||
-            (matrix.platform == 'macos' && inputs.build_for_macos)
-          }}' >> "${GITHUB_ENV}"
 
       - name: Checkout repository
         if: ${{ env.is_platform_enabled == 'true' }}
@@ -244,60 +231,16 @@ jobs:
             bevy build --locked --release --target="${target}" --features='${{ matrix.features }}'
             mv target/"${target}"/release/'${{ env.cargo_build_binary_name }}${{ matrix.binary_ext }}' tmp/binary/"${target}"'${{ matrix.binary_ext }}'
           done
-          if [ '${{ matrix.platform }}' = 'macos' ]; then
-            lipo tmp/binary/*'${{ matrix.binary_ext }}' -create -output '${{ env.app }}/${{ env.app_binary_name }}${{ matrix.binary_ext }}'
-          else
-            mv tmp/binary/*'${{ matrix.binary_ext }}' '${{ env.app }}/${{ env.app_binary_name }}${{ matrix.binary_ext }}'
-          fi
+          mv tmp/binary/*'${{ matrix.binary_ext }}' '${{ env.app }}/${{ env.app_binary_name }}${{ matrix.binary_ext }}'
 
       - name: Add assets to app (non-Web)
         if: ${{ env.is_platform_enabled == 'true' && matrix.platform != 'web' }}
         run: cp -R ./'${{ env.assets_path }}' '${{ env.app }}' || true # Ignore error if assets folder does not exist.
 
-      - name: Add metadata to app (macOS)
-        if: ${{ env.is_platform_enabled == 'true' && matrix.platform == 'macos' }}
-        run: |
-          cat >'${{ env.app }}/../Info.plist' <<EOF
-            <?xml version="1.0" encoding="UTF-8"?>
-            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-            <plist version="1.0">
-                <dict>
-                    <key>CFBundleDevelopmentRegion</key>
-                    <string>en</string>
-                    <key>CFBundleDisplayName</key>
-                    <string>${{ env.app_display_name }}</string>
-                    <key>CFBundleExecutable</key>
-                    <string>${{ env.app_binary_name }}</string>
-                    <key>CFBundleIdentifier</key>
-                    <string>${{ env.app_id }}</string>
-                    <key>CFBundleName</key>
-                    <string>${{ env.app_short_name }}</string>
-                    <key>CFBundleShortVersionString</key>
-                    <string>${{ env.version }}</string>
-                    <key>CFBundleVersion</key>
-                    <string>${{ env.version }}</string>
-                    <key>CFBundleInfoDictionaryVersion</key>
-                    <string>6.0</string>
-                    <key>CFBundlePackageType</key>
-                    <string>APPL</string>
-                    <key>CFBundleSupportedPlatforms</key>
-                    <array>
-                        <string>MacOSX</string>
-                    </array>
-                </dict>
-            </plist>
-          EOF
-
       - name: Package app (non-Windows)
         if: ${{ env.is_platform_enabled == 'true' && matrix.platform != 'windows' }}
         working-directory: tmp/app
-        run: |
-          if [ '${{ matrix.platform }}' = 'macos' ]; then
-            ln -s /Applications .
-            hdiutil create -fs HFS+ -volname '${{ env.app_package_name }}' -srcfolder . '${{ env.package }}'
-          else
-            zip --recurse-paths '${{ env.package }}' '${{ env.app_package_name }}'
-          fi
+        run: zip --recurse-paths '${{ env.package }}' '${{ env.app_package_name }}'
 
       - name: Package app (Windows)
         if: ${{ env.is_platform_enabled == 'true' && matrix.platform == 'windows' }}
@@ -364,23 +307,3 @@ jobs:
               tmp/"${package}"/* \
               '${{ env.itch_page }}':"${package#package-}"
           done
-
-  # Deploy to GitHub Pages.
-  deploy-to-github-pages:
-    runs-on: ubuntu-latest
-    needs: build
-    permissions:
-      # Required to deploy to GitHub Pages.
-      pages: write
-      # Required for GitHub Pages to verify the source of the deployment.
-      # See: <https://github.com/actions/deploy-pages/issues/329>.
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-    if: ${{ inputs.build_for_web }}
-
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deploy
-        uses: actions/deploy-pages@v4

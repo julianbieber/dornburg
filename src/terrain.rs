@@ -79,9 +79,11 @@ pub fn spawn_level(
             terrain: images.add(voxels.as_tex()),
             time: images.add(time.as_tex()),
             kill: images.add(killzones.as_tex()),
+            player: Vec4::ZERO,
         })),
         voxels.clone(),
         time,
+        UpdateTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
     ));
 
     if let Some(collider) = voxels.collider() {
@@ -195,46 +197,65 @@ pub fn update_terrain(
         &mut MeshMaterial2d<TerrainMaterial>,
         &TimeDiluationMap,
         &Transform,
+        &mut UpdateTimer,
     )>,
     mut materials: ResMut<Assets<TerrainMaterial>>,
     mut images: ResMut<Assets<Image>>,
     killzones: Single<&Killzones>,
     player: Single<&Transform, With<PlayerMarker>>,
+    global_time: Res<Time>,
 ) {
     let p = player.translation.xy();
-    for (entity, mut voxels, mut mat, time, transform) in &mut terrain {
-        for x in 0..128 {
-            let x_f = x as f32 / 128.0;
-            for y in 0..128 {
-                let voxel_position = voxel_to_world(x, y) + transform.translation.xy();
-                if p.distance_squared(voxel_position) < 300.0 * 300.0 {
-                    continue;
-                }
+    for (entity, mut voxels, mut mat, time, transform, mut timer) in &mut terrain {
+        timer.0.tick(global_time.delta());
+        if timer.0.just_finished() {
+            let mut new_voxels = voxels.clone();
+            let mut max_noise: f32 = 0.0;
+            for x in 0..128 {
+                let x_f = x as f32 / 128.0;
+                for y in 0..128 {
+                    let voxel_position = voxel_to_world(x, y) + transform.translation.xy();
+                    if p.distance_squared(voxel_position) < 300.0 * 300.0 {
+                        continue;
+                    }
+                    let y_f = y as f32 / 128.0;
 
-                let s = voxels.get_surrounding(x, y);
+                    let s = voxels.get_surrounding(x, y, 1);
 
-                let y_f = y as f32 / 128.0;
-                let grow_or_shrink = dotnoise(Vec3::new(x_f * 40.0, y_f * 40.0, time.get(x, y)));
-                if s > 2 && grow_or_shrink < 0.1 {
-                    voxels.set(x, y, false);
-                } else if grow_or_shrink * s as f32 / 5.0 > 0.8 && s > 0 {
-                    voxels.set(x, y, true)
+                    let n = fbm(
+                        Vec3::new(x_f, y_f, global_time.elapsed_secs()),
+                        5,
+                        20.0,
+                        1.2,
+                        0.6,
+                    );
+                    max_noise = max_noise.max(n);
+                    let c = voxels.get(x, y);
+                    if c || n > 4.3 {
+                        new_voxels.set(x, y, s >= 7);
+                    } else {
+                        new_voxels.set(x, y, (4..6).contains(&s) || s == 1);
+                    }
+                    // new_voxels.set(x, y, n > 4.4);
                 }
             }
-        }
-        if let Some(collider) = voxels.collider() {
-            commands
-                .get_entity(entity)
-                .unwrap()
-                .remove::<Collider>()
-                .insert(collider);
-        } else {
-            commands.get_entity(entity).unwrap().remove::<Collider>();
+            dbg!(max_noise);
+            *voxels = new_voxels;
+            if let Some(collider) = voxels.collider() {
+                commands
+                    .get_entity(entity)
+                    .unwrap()
+                    .remove::<Collider>()
+                    .insert(collider);
+            } else {
+                commands.get_entity(entity).unwrap().remove::<Collider>();
+            }
         }
         mat.0 = materials.add(TerrainMaterial {
             terrain: images.add(voxels.as_tex()),
             time: images.add(time.as_tex()),
-            kill: images.add(killzones.as_tex()), // probably not rquired, we could get the handle of the exisitng image
+            kill: images.add(killzones.as_tex()),
+            player: Vec4::new(p.x, p.y, 0.0, 0.0), // probably not rquired, we could get the handle of the exisitng image
         })
     }
 }
@@ -243,7 +264,7 @@ fn dotnoise(mut x: Vec3) -> f32 {
     let mut v = 0.0;
     for i in 0..4 {
         x = x
-            .rotate_x(0.2 * i as f32)
+            .rotate_x(1.2 * i as f32)
             .rotate_y(0.3 * i as f32)
             .rotate_z(0.4 * i as f32);
         v += Vec3::new(x.x.cos(), x.y.cos(), x.z.cos()).dot(Vec3::new(
@@ -254,6 +275,42 @@ fn dotnoise(mut x: Vec3) -> f32 {
     }
     v.abs() / 4.0
 }
+
+fn mirror(p: Vec3, n: Vec3, d: f32) -> Vec3 {
+    let dist = p.dot(n) - d;
+    p - 2.0 * dist * n
+}
+
+pub fn fbm(
+    mut point: Vec3,
+    octaves: usize,
+    frequency: f32,
+    lacunarity: f32,
+    persistence: f32,
+) -> f32 {
+    let mut result = 0.0;
+    let mut amplitude = 1.0;
+    let mut freq = frequency;
+
+    for i in 0..octaves {
+        result += 1.0 - dotnoise(point * freq) * amplitude;
+        // result *= result * result;
+        point = point.rotate_x(0.1).rotate_y(0.2).rotate_z(0.3);
+        point += Vec3::ONE;
+        point = mirror(
+            point,
+            Vec3::new(1.0, 2.0, 3.0).normalize(),
+            i as f32 * 1.6 * result,
+        );
+        freq *= lacunarity;
+        amplitude *= persistence;
+    }
+
+    result
+}
+
+#[derive(Component)]
+pub struct UpdateTimer(pub Timer);
 
 #[derive(Component, Clone)]
 pub struct VoxelizedView {
@@ -269,25 +326,24 @@ impl VoxelizedView {
 
     fn get(&self, x: u32, y: u32) -> bool {
         assert!(x < 128 && y < 128);
-        self.voxels[x as usize] & 1u128 << y > 0
+        self.voxels[x as usize] & (1u128 << y) > 0
     }
 
-    fn get_checked(&self, x: i32, y: i32) -> bool {
-        if x < 0 || y < 0 || x >= 128 || y >= 128 {
-            return false;
-        }
+    fn get_checked(&self, mut x: i32, mut y: i32) -> bool {
+        x = x.clamp(0, 127);
+        y = y.clamp(0, 127);
 
-        self.voxels[x as usize] & 1u128 << y > 0
+        self.voxels[x as usize] & (1u128 << y) > 0
     }
 
     /// returns how many of the 9 pixels are set;
-    fn get_surrounding(&self, x: u32, y: u32) -> u8 {
+    fn get_surrounding(&self, x: u32, y: u32, size: i32) -> u8 {
         let x = x as i32;
         let y = y as i32;
         let mut s = 0;
 
-        for x_o in [-1, 0, 1] {
-            for y_o in [-1, 0, 1] {
+        for x_o in -size..=size {
+            for y_o in -size..=size {
                 s += self.get_checked(x + x_o, y + y_o) as u8;
             }
         }
@@ -356,11 +412,6 @@ impl TimeDiluationMap {
         }
     }
 
-    fn get(&self, x: u32, y: u32) -> f32 {
-        assert!(x < 128 && y < 128);
-        let i = x * 128 + y;
-        self.time[i as usize]
-    }
     fn set(&mut self, x: u32, y: u32, d: f32) {
         assert!(x < 128 && y < 128);
         let i = x * 128 + y;
@@ -465,6 +516,8 @@ pub struct TerrainMaterial {
     #[texture(4)]
     #[sampler(5)]
     pub kill: Handle<Image>,
+    #[uniform(6)]
+    pub player: Vec4,
 }
 
 impl Material2d for TerrainMaterial {
