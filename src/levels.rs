@@ -104,17 +104,15 @@ In seinen Armen das Kind war tot.";
 
 #[derive(Component)]
 struct PoemState {
-    words: Vec<String>,
     timer: Timer,
 }
 
 fn spawn_timer(mut commands: Commands) {
-    let words: Vec<String> = POEM.split(&[' ', '\n']).map(|w| w.to_string()).collect();
-
     commands.spawn((
         DespawnOnExit(LevelScreens::Level),
         Node {
             width: percent(100.0),
+            margin: UiRect::all(px(40)),
             height: percent(100.0),
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::Center,
@@ -122,18 +120,30 @@ fn spawn_timer(mut commands: Commands) {
             ..Default::default()
         },
         children![(
-            Text::new(""),
-            TextFont::from_font_size(12.0),
+            ScrollPosition(Vec2::ZERO),
+            Node {
+                max_width: px(200.0),
+                max_height: px(10.0),
+                flex_direction: FlexDirection::Row,
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::FlexStart,
+                overflow: Overflow::scroll_x(),
+                ..Default::default()
+            },
             PoemState {
-                words,
-                timer: Timer::from_seconds(235.0, TimerMode::Once)
-            }
+                timer: Timer::from_seconds(120.0, TimerMode::Once)
+            },
+            children![(
+                Text::new(POEM.replace("\n", " ")),
+                TextFont::from_font_size(12.0),
+                TextLayout::new_with_justify(Justify::Left).with_linebreak(LineBreak::NoWrap)
+            )]
         ),],
     ));
 }
 
 fn update_timer(
-    mut timer: Single<(&mut Text, &mut PoemState)>,
+    mut timer: Single<(&mut ScrollPosition, &mut PoemState, &ComputedNode)>,
     time: Res<Time>,
     mut next: ResMut<NextState<LevelScreens>>,
 ) {
@@ -142,24 +152,9 @@ fn update_timer(
         next.set(LevelScreens::Restart);
     }
 
-    let total_time = timer.1.timer.duration().as_secs_f32();
+    // let total_time = timer.1.timer.duration().as_secs_f32();
 
-    let words_per_sec = timer.1.words.len() as f32 / total_time;
+    timer.0.x = timer.2.content_size.x * timer.1.timer.fraction();
 
-    let elapsed = timer.1.timer.elapsed().as_secs_f32();
-
-    let word = (words_per_sec * elapsed) as usize;
-    let words = &timer.1.words;
-    let mut content = String::new();
-    if word > 0 {
-        content.push_str(words[word - 1].as_str());
-    }
-    content.push(' ');
-    content.push_str(words[word].as_str());
-    content.push(' ');
-    if word < words.len() - 1 {
-        content.push_str(words[word + 1].as_str());
-    }
-
-    timer.0.0 = content;
+    // timer.0.0 = content;
 }

@@ -21,6 +21,7 @@ struct Opts {
 fn main() -> AppExit {
     let opts = Opts::parse();
     App::new()
+        .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
         .insert_resource(RequiredAssets { levels: Vec::new() })
         .add_systems(Startup, load_levels)
         .add_plugins((

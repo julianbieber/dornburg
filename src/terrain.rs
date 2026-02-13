@@ -79,6 +79,7 @@ pub fn spawn_level(
             terrain: images.add(voxels.as_tex()),
             time: images.add(time.as_tex()),
             kill: images.add(killzones.as_tex()),
+            player: Vec4::ZERO,
         })),
         voxels.clone(),
         time,
@@ -233,7 +234,7 @@ pub fn update_terrain(
                     if c || n > 4.3 {
                         new_voxels.set(x, y, s >= 7);
                     } else {
-                        new_voxels.set(x, y, s >= 4 && s < 6 || s == 1);
+                        new_voxels.set(x, y, (4..6).contains(&s) || s == 1);
                     }
                     // new_voxels.set(x, y, n > 4.4);
                 }
@@ -253,7 +254,8 @@ pub fn update_terrain(
         mat.0 = materials.add(TerrainMaterial {
             terrain: images.add(voxels.as_tex()),
             time: images.add(time.as_tex()),
-            kill: images.add(killzones.as_tex()), // probably not rquired, we could get the handle of the exisitng image
+            kill: images.add(killzones.as_tex()),
+            player: Vec4::new(p.x, p.y, 0.0, 0.0), // probably not rquired, we could get the handle of the exisitng image
         })
     }
 }
@@ -410,11 +412,6 @@ impl TimeDiluationMap {
         }
     }
 
-    fn get(&self, x: u32, y: u32) -> f32 {
-        assert!(x < 128 && y < 128);
-        let i = x * 128 + y;
-        self.time[i as usize]
-    }
     fn set(&mut self, x: u32, y: u32, d: f32) {
         assert!(x < 128 && y < 128);
         let i = x * 128 + y;
@@ -519,6 +516,8 @@ pub struct TerrainMaterial {
     #[texture(4)]
     #[sampler(5)]
     pub kill: Handle<Image>,
+    #[uniform(6)]
+    pub player: Vec4,
 }
 
 impl Material2d for TerrainMaterial {

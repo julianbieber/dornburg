@@ -14,9 +14,12 @@ pub fn spawn_player(
     mut materials: ResMut<Assets<ColorMaterial>>,
     spawn: Single<&Transform, With<SpawnMarker>>,
 ) {
+    let mut transform = *spawn.into_inner();
+    transform.translation.z = 1.0;
+
     commands.spawn((
         DespawnOnExit(LevelScreens::Level),
-        spawn.into_inner().clone(),
+        transform,
         Mesh2d(meshes.add(Rectangle::new(20.0, 20.0))),
         Collider::rectangle(20.0, 20.0),
         RigidBody::Dynamic,
