@@ -3,6 +3,7 @@ use avian2d::{PhysicsPlugins, prelude::PhysicsDebugPlugin};
 use bevy::{prelude::*, sprite_render::Material2dPlugin};
 
 use crate::player::sync_camera_to_player;
+use crate::terrain::out_of_bounds;
 use crate::{
     Opts,
     levels::{LevelPlugin, LevelScreens},
@@ -43,5 +44,6 @@ impl Plugin for GameplayPlugin {
                 .chain()
                 .run_if(in_state(Screen::Gameplay)),
         );
+        app.add_systems(Update, out_of_bounds.run_if(in_state(Screen::Gameplay)));
     }
 }
