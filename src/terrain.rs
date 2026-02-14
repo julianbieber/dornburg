@@ -185,6 +185,19 @@ fn player_dies(
     }
 }
 
+pub fn out_of_bounds(
+    player: Single<&Transform, With<PlayerMarker>>,
+    mut next: ResMut<NextState<LevelScreens>>,
+) {
+    if player.translation.x < -20.0 * 65.0
+        || player.translation.x > 20.0 * 65.0
+        || player.translation.y < -20.0 * 65.0
+        || player.translation.y > 20.0 * 65.0
+    {
+        next.set(LevelScreens::Restart);
+    }
+}
+
 fn voxel_to_world(x: u32, y: u32) -> Vec2 {
     Vec2::new(x as f32 - 64.0, -(y as f32) + 63.0) * 20.0
 }
@@ -209,6 +222,9 @@ pub fn update_terrain(
     for (entity, mut voxels, mut mat, time, transform, mut timer) in &mut terrain {
         timer.0.tick(global_time.delta());
         if timer.0.just_finished() {
+            let total = voxels.total();
+            let grow = total < 1638;
+            let shrink = total > 4915;
             let mut new_voxels = voxels.clone();
             let mut max_noise: f32 = 0.0;
             for x in 0..128 {
@@ -231,11 +247,24 @@ pub fn update_terrain(
                     );
                     max_noise = max_noise.max(n);
                     let c = voxels.get(x, y);
-                    if c || n > 4.3 {
+                    if grow {
+                        if c || n > 4.3 {
+                            new_voxels.set(x, y, s >= 5);
+                        } else {
+                            new_voxels.set(x, y, (3..4).contains(&s) || s == 1);
+                        }
+                    } else if shrink {
+                        if c && n > 4.3 {
+                            new_voxels.set(x, y, s >= 7 || s == 1);
+                        } else {
+                            new_voxels.set(x, y, (4..6).contains(&s));
+                        }
+                    } else if c || n > 4.3 {
                         new_voxels.set(x, y, s >= 7);
                     } else {
-                        new_voxels.set(x, y, (4..6).contains(&s) || s == 1);
+                        new_voxels.set(x, y, (4..6).contains(&s));
                     }
+
                     // new_voxels.set(x, y, n > 4.4);
                 }
             }
@@ -354,6 +383,16 @@ impl VoxelizedView {
         assert!(x < 128 && y < 128);
         let v = v as u128;
         self.voxels[x as usize] = (self.voxels[x as usize] & !(1 << y)) | (v << y);
+    }
+
+    fn total(&self) -> u32 {
+        let mut c = 0;
+        for x in 0..128 {
+            for y in 0..128 {
+                c += self.get(x, y) as u32;
+            }
+        }
+        c
     }
 
     fn collider(&self) -> Option<Collider> {
