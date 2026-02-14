@@ -52,6 +52,7 @@ pub fn spawn_level(
     let mut voxels = VoxelizedView::empty();
     let mut killzones = Killzones::empty();
     let mut finishes = Vec::new();
+    let mut finish_coords = Vec::new();
     let mut spawn = Vec2::ZERO;
 
     for y in 0..level.height() {
@@ -61,6 +62,7 @@ pub fn spawn_level(
                 killzones.set(x, y, color.distance(&kill) <= 0.0001);
                 if color.distance(&finish) < 0.0001 {
                     finishes.push(voxel_to_world(x, y));
+                    finish_coords.push((x, y));
                 }
                 if color.distance(&spawn_color) <= 0.0001 {
                     spawn = voxel_to_world(x, y);
@@ -68,6 +70,7 @@ pub fn spawn_level(
             }
         }
     }
+    voxels.finish_coords = finish_coords;
 
     let time = TimeDiluationMap::zero();
 
@@ -344,12 +347,14 @@ pub struct UpdateTimer(pub Timer);
 #[derive(Component, Clone)]
 pub struct VoxelizedView {
     voxels: Vec<u128>,
+    finish_coords: Vec<(u32, u32)>,
 }
 
 impl VoxelizedView {
     fn empty() -> VoxelizedView {
         VoxelizedView {
             voxels: vec![0; 128],
+            finish_coords: Vec::new(),
         }
     }
 
@@ -381,6 +386,9 @@ impl VoxelizedView {
 
     fn set(&mut self, x: u32, y: u32, v: bool) {
         assert!(x < 128 && y < 128);
+        if self.finish_coords.contains(&(x, y)) {
+            return;
+        }
         let v = v as u128;
         self.voxels[x as usize] = (self.voxels[x as usize] & !(1 << y)) | (v << y);
     }
