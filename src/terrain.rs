@@ -91,7 +91,8 @@ pub fn spawn_level(
             terrain: images.add(voxels.as_tex()),
             time: images.add(time.as_tex()),
             kill: images.add(killzones.as_tex()),
-            player: Vec4::ZERO,
+            player: Vec4::new(0.0, 0.0, f32::INFINITY, f32::INFINITY),
+            f1: Vec4::INFINITY,
         })),
         voxels.clone(),
         time,
@@ -239,8 +240,11 @@ pub fn update_terrain(
     killzones: Single<&Killzones>,
     player: Single<&Transform, With<PlayerMarker>>,
     global_time: Res<Time>,
+    current_level: Res<CurrentLevel>,
+    finishes: Query<&Transform, With<FinishMarker>>,
 ) {
     let p = player.translation.xy();
+    let finishes: Vec<Vec2> = finishes.iter().map(|v| v.translation.xy()).collect();
     for (entity, mut voxels, mut mat, time, transform, mut timer) in &mut terrain {
         timer.0.tick(global_time.delta());
         if timer.0.just_finished() {
@@ -256,33 +260,62 @@ pub fn update_terrain(
                         continue;
                     }
                     let y_f = y as f32 / 128.0;
+                    let time = time.get(x, y);
 
-                    let s = voxels.get_surrounding(x, y, 1);
-
-                    let n = fbm(
-                        Vec3::new(x_f, y_f, global_time.elapsed_secs()),
-                        5,
-                        20.0,
-                        1.2,
-                        0.6,
-                    );
-                    let c = voxels.get(x, y);
-                    if grow {
-                        if c {
-                            new_voxels.set(x, y, s >= 5);
-                        } else {
-                            new_voxels.set(x, y, (3..4).contains(&s) || (s == 0 && n > 4.6));
+                    match current_level.0 {
+                        0 => {
+                            update_level1(
+                                time,
+                                &voxels,
+                                grow,
+                                shrink,
+                                &mut new_voxels,
+                                x,
+                                x_f,
+                                y,
+                                y_f,
+                            );
                         }
-                    } else if shrink {
-                        if c && n > 4.3 {
-                            new_voxels.set(x, y, (3..4).contains(&s) || s == 1);
-                        } else {
-                            new_voxels.set(x, y, (4..6).contains(&s));
+                        1 => {
+                            update_level2(
+                                time,
+                                &voxels,
+                                grow,
+                                shrink,
+                                &mut new_voxels,
+                                x,
+                                x_f,
+                                y,
+                                y_f,
+                            );
                         }
-                    } else if c || n > 4.3 {
-                        new_voxels.set(x, y, s >= 7);
-                    } else {
-                        new_voxels.set(x, y, (4..6).contains(&s));
+                        2 => {
+                            update_level3(
+                                time,
+                                &voxels,
+                                grow,
+                                shrink,
+                                &mut new_voxels,
+                                x,
+                                x_f,
+                                y,
+                                y_f,
+                            );
+                        }
+                        3 => {
+                            update_level4(
+                                time,
+                                &voxels,
+                                grow,
+                                shrink,
+                                &mut new_voxels,
+                                x,
+                                x_f,
+                                y,
+                                y_f,
+                            );
+                        }
+                        _ => (),
                     }
 
                     // new_voxels.set(x, y, n > 4.4);
@@ -299,12 +332,163 @@ pub fn update_terrain(
                 commands.get_entity(entity).unwrap().remove::<Collider>();
             }
         }
+        let f1 = finishes
+            .get(0)
+            .cloned()
+            .unwrap_or(Vec2::new(10000000.0, 10000000.0));
+        let f2 = finishes
+            .get(1)
+            .cloned()
+            .unwrap_or(Vec2::new(10000000.0, 10000000.0));
+        let f3 = finishes
+            .get(2)
+            .cloned()
+            .unwrap_or(Vec2::new(10000000.0, 10000000.0));
         mat.0 = materials.add(TerrainMaterial {
             terrain: images.add(voxels.as_tex()),
             time: images.add(time.as_tex()),
             kill: images.add(killzones.as_tex()),
-            player: Vec4::new(p.x, p.y, 0.0, 0.0), // probably not rquired, we could get the handle of the exisitng image
+            player: Vec4::new(p.x, p.y, f1.x, f1.y),
+            f1: Vec4::new(f2.x, f2.y, f3.x, f3.y),
         })
+    }
+}
+
+// feels good enough for the expected duration to finish level 1, the end gets harder to reach as time goes on
+fn update_level1(
+    local_time: f32,
+    voxels: &VoxelizedView,
+    grow: bool,
+    shrink: bool,
+    new_voxels: &mut VoxelizedView,
+    x: u32,
+    x_f: f32,
+    y: u32,
+    y_f: f32,
+) {
+    let s = voxels.get_surrounding(x, y, 1);
+
+    let n = fbm(Vec3::new(x_f, y_f, local_time), 5, 20.0, 1.2, 0.6);
+    let c = voxels.get(x, y);
+    if grow {
+        if c {
+            new_voxels.set(x, y, s >= 2 && s < 6);
+        } else {
+            new_voxels.set(x, y, (3..4).contains(&s));
+        }
+    } else if shrink {
+        if c && n > 4.3 {
+            new_voxels.set(x, y, (3..4).contains(&s) || s == 1);
+        } else {
+            new_voxels.set(x, y, (4..6).contains(&s));
+        }
+    } else if c || n > 4.3 {
+        new_voxels.set(x, y, s >= 7);
+    } else {
+        new_voxels.set(x, y, (4..6).contains(&s));
+    }
+}
+
+// feels hard to get to get through the small gap, you have to wait until an opening presents itself
+fn update_level2(
+    local_time: f32,
+    voxels: &VoxelizedView,
+    grow: bool,
+    shrink: bool,
+    new_voxels: &mut VoxelizedView,
+    x: u32,
+    x_f: f32,
+    y: u32,
+    y_f: f32,
+) {
+    let s = voxels.get_surrounding(x, y, 1);
+
+    let n = fbm(Vec3::new(x_f, y_f, local_time), 5, 20.0, 1.2, 0.6);
+    let c = voxels.get(x, y);
+    if grow {
+        if c {
+            new_voxels.set(x, y, s >= 2 && s < 6);
+        } else {
+            new_voxels.set(x, y, (3..4).contains(&s) || (s == 0 && n > 4.7));
+        }
+    } else if shrink {
+        if c && n > 4.3 {
+            new_voxels.set(x, y, (3..4).contains(&s) || s == 1);
+        } else {
+            new_voxels.set(x, y, (4..6).contains(&s));
+        }
+    } else if c || n > 4.3 {
+        new_voxels.set(x, y, s >= 7);
+    } else {
+        new_voxels.set(x, y, (4..6).contains(&s));
+    }
+}
+
+fn update_level3(
+    local_time: f32,
+    voxels: &VoxelizedView,
+    grow: bool,
+    shrink: bool,
+    new_voxels: &mut VoxelizedView,
+    x: u32,
+    x_f: f32,
+    y: u32,
+    y_f: f32,
+) {
+    let s = voxels.get_surrounding(x, y, 1);
+
+    let n = fbm(Vec3::new(x_f, y_f, local_time), 5, 20.0, 1.2, 0.6);
+    let c = voxels.get(x, y);
+    if grow {
+        if c {
+            new_voxels.set(x, y, s >= 3);
+        } else {
+            new_voxels.set(x, y, (3..4).contains(&s) || (s == 0 && n > 4.6));
+        }
+    } else if shrink {
+        if c && n > 4.3 {
+            new_voxels.set(x, y, (3..4).contains(&s) || s == 1);
+        } else {
+            new_voxels.set(x, y, (4..6).contains(&s) && n > 3.4);
+        }
+    } else if c || n > 4.3 {
+        new_voxels.set(x, y, s >= 7);
+    } else {
+        new_voxels.set(x, y, (4..6).contains(&s));
+    }
+}
+
+fn update_level4(
+    local_time: f32,
+    voxels: &VoxelizedView,
+    grow: bool,
+    shrink: bool,
+    new_voxels: &mut VoxelizedView,
+    x: u32,
+    x_f: f32,
+    y: u32,
+    y_f: f32,
+) {
+    let s = voxels.get_surrounding(x, y, 1);
+
+    let n = fbm(Vec3::new(x_f, y_f, local_time), 5, 20.0, 1.2, 0.6);
+    let c = voxels.get(x, y);
+    if grow {
+        if c {
+            new_voxels.set(x, y, s >= 5);
+        } else {
+            new_voxels.set(x, y, (3..4).contains(&s) || (s == 0 && n > 4.6));
+        }
+    } else if shrink {
+        if c && n > 4.3 {
+            new_voxels.set(x, y, (3..4).contains(&s) || s == 1);
+        } else {
+            new_voxels.set(x, y, (4..6).contains(&s));
+        }
+    } else if c || n > 4.3 {
+        new_voxels.set(x, y, s >= 7);
+    } else {
+        new_voxels.set(x, y, (4..6).contains(&s));
     }
 }
 
@@ -485,7 +669,7 @@ impl TimeDiluationMap {
         let i = x * 128 + y;
         self.time[i as usize] = d;
     }
-    fn get(&mut self, x: u32, y: u32) -> f32 {
+    fn get(&self, x: u32, y: u32) -> f32 {
         assert!(x < 128 && y < 128);
         let i = x * 128 + y;
         self.time[i as usize]
@@ -591,6 +775,8 @@ pub struct TerrainMaterial {
     pub kill: Handle<Image>,
     #[uniform(6)]
     pub player: Vec4,
+    #[uniform(7)]
+    pub f1: Vec4,
 }
 
 impl Material2d for TerrainMaterial {
