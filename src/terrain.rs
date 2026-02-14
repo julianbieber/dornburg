@@ -10,7 +10,11 @@ use bevy::{
     sprite_render::Material2d,
 };
 
-use crate::{RequiredAssets, levels::LevelScreens, player::PlayerMarker};
+use crate::{
+    RequiredAssets,
+    levels::{CurrentLevel, LevelScreens},
+    player::PlayerMarker,
+};
 
 /// A level is initialized from an image.
 /// Compatible with the default color scale of rx.
@@ -38,8 +42,11 @@ pub fn spawn_level(
     mut images: ResMut<Assets<Image>>,
     required: Res<RequiredAssets>,
     mut required_finishes: ResMut<RequiredFinishes>,
+    current_level: Res<CurrentLevel>,
 ) {
-    let level = images.get(required.levels.first().unwrap()).unwrap();
+    let level = images
+        .get(&required.levels[current_level.0 as usize])
+        .unwrap();
     if level.width() != 128 {
         panic!("levels must be 128p wide");
     }

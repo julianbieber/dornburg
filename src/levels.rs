@@ -25,7 +25,7 @@ fn level(mut next: ResMut<NextState<LevelScreens>>) {
 }
 
 #[derive(Resource, Clone, Copy, Eq, PartialEq, Hash, Debug)]
-pub struct CurrentLevel(u32);
+pub struct CurrentLevel(pub u32);
 
 #[derive(States, Clone, Copy, Eq, PartialEq, Hash, Debug)]
 pub enum LevelScreens {
@@ -33,6 +33,7 @@ pub enum LevelScreens {
     Restart,
     Level,
     Intermission,
+    GameEnd,
 }
 
 fn spawn_intermission(mut commands: Commands, _current_level: Res<CurrentLevel>) {
@@ -59,7 +60,11 @@ fn next_level(
     mut next: ResMut<NextState<LevelScreens>>,
 ) {
     current_level.0 += 1;
-    next.set(LevelScreens::Level);
+    if current_level.0 < 4 {
+        next.set(LevelScreens::Level);
+    } else {
+        next.set(LevelScreens::GameEnd);
+    }
 }
 
 const POEM: &str = "Wer reitet so spät durch Nacht und Wind?

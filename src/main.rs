@@ -39,6 +39,16 @@ pub struct RequiredAssets {
 }
 
 fn load_levels(asset_server: Res<AssetServer>, mut required: ResMut<RequiredAssets>) {
-    let example = asset_server.load("levels/level_example.png");
-    required.levels.push(example);
+    required
+        .levels
+        .push(asset_server.load("levels/level_1.png"));
+    required
+        .levels
+        .push(asset_server.load("levels/level_2.png"));
+    required
+        .levels
+        .push(asset_server.load("levels/level_3.png"));
+    required
+        .levels
+        .push(asset_server.load("levels/level_4.png"));
 }
