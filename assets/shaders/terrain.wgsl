@@ -128,7 +128,7 @@ fn background(
     rd.y = rd.y * -1.0;
     rd.x = rd.x * (iResolution.x / iResolution.y);
     rd.z = 1.0;
-    rd = normalize(rd)*sin(time);
+    rd = normalize(rd);
 
     return march(ro, rd, time);
 }
@@ -143,7 +143,8 @@ fn fragment(
     }
     var uv = mesh.uv;
     let time = textureSample(time_texture, time_texture_sampler, mesh.uv.yx).r;
-    uv += dotnoise(vec3(uv, time),time)*0.003;
+    let r = distance_to_player / 200.0-1.0;
+    uv += (sin(vec2(dotnoise(vec3(time), 0.0), dotnoise(vec3(time), 1.0)))*0.013 )* clamp(r, 0.0, 1.0);
     let is_set = textureSample(height_texture, height_texture_sampler, uv.yx).r > 0.5;
     let kill = textureSample(kill_texture, kill_texture_sampler, uv.yx).r > 0.5;
 
