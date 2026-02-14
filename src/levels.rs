@@ -10,7 +10,7 @@ pub struct LevelPlugin;
 
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(CurrentLevel(0));
+        app.insert_resource(CurrentLevel(2));
         app.insert_state(LevelScreens::None);
         app.add_systems(OnEnter(Screen::Gameplay), level);
         app.add_systems(OnEnter(LevelScreens::Restart), level);

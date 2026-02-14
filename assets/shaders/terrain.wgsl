@@ -15,6 +15,7 @@ struct CustomMaterial {
 @group(2) @binding(4) var kill_texture: texture_2d<f32>;
 @group(2) @binding(5) var kill_texture_sampler: sampler;
 @group(2) @binding(6) var<uniform> player_position: CustomMaterial;
+@group(2) @binding(7) var<uniform> f1_position: CustomMaterial;
 
 
 fn cos_s(x: vec3f) -> vec3f {
@@ -138,6 +139,18 @@ fn fragment(
     mesh: VertexOutput,
 ) -> @location(0) vec4<f32> {
     let distance_to_player = (length(player_position.player.xy - mesh.world_position.xy));
+
+    let f1 = player_position.player.zw;
+    let f2 = f1_position.player.xy;
+    let f3 = f1_position.player.zw;
+
+    let f1_d = length(mesh.world_position.xy - f1);
+    let f2_d = length(mesh.world_position.xy - f2);
+    let f3_d = length(mesh.world_position.xy - f3);
+
+
+    let f_d = ((1280.0*2.0) - min(f3_d, min(f1_d, f2_d)))/1280.0;
+    
     if distance_to_player > 350.0 {
         return vec4f(0.0, 0.0, 0.0, 1.0);
     }
@@ -180,7 +193,7 @@ fn fragment(
                 0.0,
             ),
             vec3f(
-                0.0,
+                0.2,
                 0.0,
                 0.21633771,
             ),
@@ -190,7 +203,7 @@ fn fragment(
                 1.0,
             ),
             vec3f(
-                0.0
+            0.0,0.0,f_d
             ),
             dotnoise(vec3f(mesh.world_position.x * 0.002, mesh.world_position.y * 0.002, time), time)
         )*(1.0 - (distance_to_player / 400.0)), 1.0);
