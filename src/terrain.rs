@@ -1,3 +1,5 @@
+use core::f32;
+
 use avian2d::prelude::*;
 use bevy::{
     asset::RenderAssetUsages,
@@ -140,15 +142,25 @@ pub fn update_time(
     let p = player.translation.xy();
     let d = clock.delta_secs();
     for mut time in &mut times {
+        let mut min_time = f32::INFINITY;
+        let mut zero_coords = Vec::new();
         for x in 0..128 {
             for y in 0..128 {
                 let voxel_position = voxel_to_world(x, y);
                 let z = p.distance_squared(voxel_position);
-                let f1 = (z / 160.0 - 160.0).clamp(0.0, 1.0);
+                let f1 = (z / 260.0 - 260.0).clamp(0.0, 1.0);
                 let f2 = 4.0 / (1.0 + f1) - 1.0;
                 let f3 = (f1 * 3.0).min(f2);
-                time.set(x, y, d * f3);
+                time.tick(x, y, d * f3);
+                if f3 <= 0.00001 {
+                    let z = time.get(x, y);
+                    min_time = min_time.min(z + d * f3);
+                    zero_coords.push((x, y));
+                }
             }
+        }
+        for (x, y) in zero_coords {
+            time.set(x, y, min_time);
         }
     }
 }
@@ -229,7 +241,6 @@ pub fn update_terrain(
             let grow = total < 1638;
             let shrink = total > 4915;
             let mut new_voxels = voxels.clone();
-            let mut max_noise: f32 = 0.0;
             for x in 0..128 {
                 let x_f = x as f32 / 128.0;
                 for y in 0..128 {
@@ -248,7 +259,6 @@ pub fn update_terrain(
                         1.2,
                         0.6,
                     );
-                    max_noise = max_noise.max(n);
                     let c = voxels.get(x, y);
                     if grow {
                         if c || n > 4.3 {
@@ -271,7 +281,6 @@ pub fn update_terrain(
                     // new_voxels.set(x, y, n > 4.4);
                 }
             }
-            dbg!(max_noise);
             *voxels = new_voxels;
             if let Some(collider) = voxels.collider() {
                 commands
@@ -459,10 +468,20 @@ impl TimeDiluationMap {
         }
     }
 
-    fn set(&mut self, x: u32, y: u32, d: f32) {
+    fn tick(&mut self, x: u32, y: u32, d: f32) {
         assert!(x < 128 && y < 128);
         let i = x * 128 + y;
         self.time[i as usize] += d;
+    }
+    fn set(&mut self, x: u32, y: u32, d: f32) {
+        assert!(x < 128 && y < 128);
+        let i = x * 128 + y;
+        self.time[i as usize] = d;
+    }
+    fn get(&mut self, x: u32, y: u32) -> f32 {
+        assert!(x < 128 && y < 128);
+        let i = x * 128 + y;
+        self.time[i as usize]
     }
 
     fn as_tex(&self) -> Image {
