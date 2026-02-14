@@ -88,7 +88,7 @@ pub fn spawn_level(
         })),
         voxels.clone(),
         time,
-        UpdateTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
+        UpdateTimer(Timer::from_seconds(2.2, TimerMode::Repeating)),
     ));
 
     if let Some(collider) = voxels.collider() {
@@ -261,14 +261,14 @@ pub fn update_terrain(
                     );
                     let c = voxels.get(x, y);
                     if grow {
-                        if c || n > 4.3 {
+                        if c {
                             new_voxels.set(x, y, s >= 5);
                         } else {
-                            new_voxels.set(x, y, (3..4).contains(&s) || s == 1);
+                            new_voxels.set(x, y, (3..4).contains(&s) || (s == 0 && n > 4.6));
                         }
                     } else if shrink {
                         if c && n > 4.3 {
-                            new_voxels.set(x, y, s >= 7 || s == 1);
+                            new_voxels.set(x, y, (3..4).contains(&s) || s == 1);
                         } else {
                             new_voxels.set(x, y, (4..6).contains(&s));
                         }
