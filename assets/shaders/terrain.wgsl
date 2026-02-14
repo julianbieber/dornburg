@@ -138,12 +138,14 @@ fn fragment(
     mesh: VertexOutput,
 ) -> @location(0) vec4<f32> {
     let distance_to_player = (length(player_position.player.xy - mesh.world_position.xy));
-    if distance_to_player > 350 {
+    if distance_to_player > 350.0 {
         return vec4f(0.0, 0.0, 0.0, 1.0);
     }
-    let is_set = textureSample(height_texture, height_texture_sampler, mesh.uv.yx).r > 0.5;
+    var uv = mesh.uv;
     let time = textureSample(time_texture, time_texture_sampler, mesh.uv.yx).r;
-    let kill = textureSample(kill_texture, kill_texture_sampler, mesh.uv.yx).r > 0.5;
+    uv += dotnoise(vec3(uv, time),time)*0.003;
+    let is_set = textureSample(height_texture, height_texture_sampler, uv.yx).r > 0.5;
+    let kill = textureSample(kill_texture, kill_texture_sampler, uv.yx).r > 0.5;
 
     if kill {
         return vec4<f32>(color(
@@ -166,7 +168,7 @@ fn fragment(
                 0.0
             ),
             dotnoise(vec3f(mesh.world_position.x * 0.02, mesh.world_position.y * 0.02, time*10.0), time)
-        )* (1.0 - (distance_to_player / 400)), 1.0);
+        )* (1.0 - (distance_to_player / 400.0)), 1.0);
     }
 
     if is_set {
@@ -190,8 +192,8 @@ fn fragment(
                 0.0
             ),
             dotnoise(vec3f(mesh.world_position.x * 0.002, mesh.world_position.y * 0.002, time), time)
-        )*(1.0 - (distance_to_player / 400)), 1.0);
+        )*(1.0 - (distance_to_player / 400.0)), 1.0);
     } else {
-        return vec4f(background(mesh.uv, vec2f(1280, 1280), time*0.2), 1.0) * (1.0 - (distance_to_player / 400));
+        return vec4f(background(mesh.uv, vec2f(1280.0, 1280.0), time*0.2), 1.0) * (1.0 - (distance_to_player / 400.0));
     }
 }
