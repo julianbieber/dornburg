@@ -24,7 +24,7 @@ pub fn spawn_player(
         Collider::rectangle(20.0, 20.0),
         RigidBody::Dynamic,
         Mass(1.0),
-        Friction::new(0.8),
+        Friction::new(0.3),
         MeshMaterial2d(materials.add(Color::srgb(0.0, 0.2, 0.5))),
         PlayerMarker,
     ));
