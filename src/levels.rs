@@ -4,7 +4,7 @@ use bevy::{
     ui_widgets::{Activate, observe},
 };
 
-use crate::screens::Screen;
+use crate::{screens::Screen, terrain::RequiredFinishes};
 
 pub struct LevelPlugin;
 
@@ -16,7 +16,11 @@ impl Plugin for LevelPlugin {
         app.add_systems(OnEnter(LevelScreens::Restart), level);
         app.add_systems(OnEnter(LevelScreens::Intermission), spawn_intermission);
         app.add_systems(OnEnter(LevelScreens::Level), spawn_timer);
-        app.add_systems(Update, update_timer.run_if(in_state(LevelScreens::Level)));
+        app.add_systems(OnEnter(LevelScreens::Level), spawn_missing_finishes);
+        app.add_systems(
+            Update,
+            (update_timer, update_finish_text).run_if(in_state(LevelScreens::Level)),
+        );
     }
 }
 
@@ -215,6 +219,34 @@ fn spawn_timer(mut commands: Commands) {
             )]
         ),],
     ));
+}
+
+#[derive(Component)]
+pub struct FinishTextMarker;
+
+fn spawn_missing_finishes(mut commands: Commands) {
+    commands.spawn((
+        DespawnOnExit(LevelScreens::Level),
+        Node {
+            position_type: PositionType::Absolute,
+            top: px(20),
+            left: px(100),
+            ..Default::default()
+        },
+        children![(Text::new(""), FinishTextMarker)],
+    ));
+}
+
+fn update_finish_text(
+    mut text: Single<&mut Text, With<FinishTextMarker>>,
+    finishes: Res<RequiredFinishes>,
+) {
+    let i = finishes.0;
+    if i == 0 {
+        text.0 = format!("Collect {i} bone!");
+    } else {
+        text.0 = format!("Collect {i} bones!");
+    }
 }
 
 fn update_timer(
