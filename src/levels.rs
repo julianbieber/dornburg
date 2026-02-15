@@ -294,8 +294,13 @@ fn update_timer(
     timer.0.x = timer.2.content_size.x * timer.1.timer.fraction();
 }
 
-fn display_end(mut commands: Commands, start: Res<RunStartTime>, assets: Res<RequiredAssets>) {
-    let i = start.0.elapsed();
+fn display_end(
+    mut commands: Commands,
+    start: Res<RunStartTime>,
+    assets: Res<RequiredAssets>,
+    time: Res<Time>,
+) {
+    let i = time.elapsed_secs() - start.0;
     commands.spawn((
         DespawnOnExit(LevelScreens::GameEnd),
         Node {
@@ -317,7 +322,7 @@ fn display_end(mut commands: Commands, start: Res<RunStartTime>, assets: Res<Req
                 },
                 BackgroundColor(Color::srgb(0.15, 0.15, 0.15)),
                 children![(
-                    Text::new(format!("You woke up after: {i:?}")),
+                    Text::new(format!("You woke up after: {i:?}s")),
                     TextFont {
                         font: assets.font.clone().unwrap(),
                         ..Default::default()
