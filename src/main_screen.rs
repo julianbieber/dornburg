@@ -79,6 +79,10 @@ fn go_to_play(
         .levels
         .iter()
         .all(|l| asset_server.is_loaded_with_dependencies(l.id()))
+        && required
+            .font
+            .clone()
+            .is_some_and(|v| asset_server.is_loaded_with_dependencies(v.id()))
     {
         next.set(Screen::Gameplay);
     } else {

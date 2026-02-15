@@ -4,7 +4,7 @@ use bevy::{
     ui_widgets::{Activate, observe},
 };
 
-use crate::{gameplay::RunStartTime, screens::Screen, terrain::RequiredFinishes};
+use crate::{RequiredAssets, gameplay::RunStartTime, screens::Screen, terrain::RequiredFinishes};
 
 pub struct LevelPlugin;
 
@@ -41,7 +41,11 @@ pub enum LevelScreens {
     GameEnd,
 }
 
-fn spawn_intermission(mut commands: Commands, _current_level: Res<CurrentLevel>) {
+fn spawn_intermission(
+    mut commands: Commands,
+    _current_level: Res<CurrentLevel>,
+    assets: Res<RequiredAssets>,
+) {
     let intermission_text_0 = "The candle burned low beside the bed, its flame bending as if \
     listening. Shadows pooled in the corners of the chamber like ink reluctant to dry. \
     Upon the small table rested the skull, pale and patient, as though waiting its turn to speak. \
@@ -119,10 +123,26 @@ fn spawn_intermission(mut commands: Commands, _current_level: Res<CurrentLevel>)
                     ..Default::default()
                 },
                 BackgroundColor(Color::srgb(0.15, 0.15, 0.15)),
-                children![(Text::new(texts[_current_level.0 as usize]),)],
+                children![(
+                    Text::new(texts[_current_level.0 as usize]),
+                    TextFont {
+                        font: assets.font.clone().unwrap(),
+                        ..Default::default()
+                    },
+                )],
             ),
             (
-                button(ButtonProps::default(), (), Spawn(Text::new("next level"))),
+                button(
+                    ButtonProps::default(),
+                    (),
+                    Spawn((
+                        Text::new("next level"),
+                        TextFont {
+                            font: assets.font.clone().unwrap(),
+                            ..Default::default()
+                        },
+                    ))
+                ),
                 observe(next_level),
             ),
         ],
@@ -187,7 +207,7 @@ struct PoemState {
     timer: Timer,
 }
 
-fn spawn_timer(mut commands: Commands) {
+fn spawn_timer(mut commands: Commands, assets: Res<RequiredAssets>) {
     commands.spawn((
         DespawnOnExit(LevelScreens::Level),
         Node {
@@ -215,7 +235,11 @@ fn spawn_timer(mut commands: Commands) {
             },
             children![(
                 Text::new(POEM.replace("\n", " ")),
-                TextFont::from_font_size(12.0),
+                TextFont {
+                    font: assets.font.clone().unwrap(),
+                    font_size: 12.0,
+                    ..Default::default()
+                },
                 TextLayout::new_with_justify(Justify::Left).with_linebreak(LineBreak::NoWrap)
             )]
         ),],
@@ -225,7 +249,7 @@ fn spawn_timer(mut commands: Commands) {
 #[derive(Component)]
 pub struct FinishTextMarker;
 
-fn spawn_missing_finishes(mut commands: Commands) {
+fn spawn_missing_finishes(mut commands: Commands, assets: Res<RequiredAssets>) {
     commands.spawn((
         DespawnOnExit(LevelScreens::Level),
         Node {
@@ -234,7 +258,14 @@ fn spawn_missing_finishes(mut commands: Commands) {
             left: px(100),
             ..Default::default()
         },
-        children![(Text::new(""), FinishTextMarker)],
+        children![(
+            Text::new(""),
+            TextFont {
+                font: assets.font.clone().unwrap(),
+                ..Default::default()
+            },
+            FinishTextMarker
+        )],
     ));
 }
 
@@ -263,7 +294,7 @@ fn update_timer(
     timer.0.x = timer.2.content_size.x * timer.1.timer.fraction();
 }
 
-fn display_end(mut commands: Commands, start: Res<RunStartTime>) {
+fn display_end(mut commands: Commands, start: Res<RunStartTime>, assets: Res<RequiredAssets>) {
     let i = start.0.elapsed();
     commands.spawn((
         DespawnOnExit(LevelScreens::GameEnd),
@@ -285,13 +316,25 @@ fn display_end(mut commands: Commands, start: Res<RunStartTime>) {
                     ..Default::default()
                 },
                 BackgroundColor(Color::srgb(0.15, 0.15, 0.15)),
-                children![Text::new(format!("You woke up after: {i:?}"))],
+                children![(
+                    Text::new(format!("You woke up after: {i:?}")),
+                    TextFont {
+                        font: assets.font.clone().unwrap(),
+                        ..Default::default()
+                    },
+                )],
             ),
             (
                 button(
                     ButtonProps::default(),
                     (),
-                    Spawn(Text::new("Back to Main Menu"))
+                    Spawn((
+                        Text::new("Back to Main Menu"),
+                        TextFont {
+                            font: assets.font.clone().unwrap(),
+                            ..Default::default()
+                        },
+                    ))
                 ),
                 observe(go_to_main),
             ),

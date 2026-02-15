@@ -22,7 +22,10 @@ fn main() -> AppExit {
     let opts = Opts::parse();
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
-        .insert_resource(RequiredAssets { levels: Vec::new() })
+        .insert_resource(RequiredAssets {
+            levels: Vec::new(),
+            font: None,
+        })
         .add_systems(Startup, load_levels)
         .add_plugins((
             DefaultPlugins,
@@ -36,6 +39,7 @@ fn main() -> AppExit {
 #[derive(Resource)]
 pub struct RequiredAssets {
     pub levels: Vec<Handle<Image>>,
+    font: Option<Handle<Font>>,
 }
 
 fn load_levels(asset_server: Res<AssetServer>, mut required: ResMut<RequiredAssets>) {
@@ -51,4 +55,6 @@ fn load_levels(asset_server: Res<AssetServer>, mut required: ResMut<RequiredAsse
     required
         .levels
         .push(asset_server.load("levels/level_4.png"));
+
+    required.font = Some(asset_server.load("fonts/CinzelDecorative-Regular.ttf"));
 }
