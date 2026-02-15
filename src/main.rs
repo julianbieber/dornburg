@@ -10,7 +10,6 @@ mod player;
 mod player_controller;
 mod screens;
 mod terrain;
-mod tooltip;
 
 #[derive(Parser, Debug, Resource, Clone, Copy)]
 struct Opts {
