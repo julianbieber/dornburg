@@ -5,7 +5,6 @@ use bevy::{
 };
 
 use crate::{RequiredAssets, gameplay::RunStartTime, screens::Screen, terrain::RequiredFinishes};
-
 pub struct LevelPlugin;
 
 impl Plugin for LevelPlugin {

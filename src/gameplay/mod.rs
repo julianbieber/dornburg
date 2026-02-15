@@ -2,6 +2,7 @@ use avian2d::prelude::Gravity;
 use avian2d::{PhysicsPlugins, prelude::PhysicsDebugPlugin};
 use bevy::{prelude::*, sprite_render::Material2dPlugin};
 
+use crate::main_screen::camera_intro_zoom;
 use crate::player::sync_camera_to_player;
 use crate::terrain::out_of_bounds;
 use crate::{
@@ -44,6 +45,7 @@ impl Plugin for GameplayPlugin {
                 .chain()
                 .run_if(in_state(Screen::Gameplay)),
         );
+        app.add_systems(Update, camera_intro_zoom);
         app.add_systems(Update, out_of_bounds.run_if(in_state(Screen::Gameplay)));
         app.insert_resource(RunStartTime(0.0));
         app.add_systems(OnEnter(Screen::Gameplay), set_start);

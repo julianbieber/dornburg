@@ -13,19 +13,27 @@ pub fn spawn_player(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     spawn: Single<&Transform, With<SpawnMarker>>,
+    asset_server: Res<AssetServer>,
 ) {
     let mut transform = *spawn.into_inner();
     transform.translation.z = 1.0;
+    let player_texture: Handle<Image> = asset_server.load("sprites/goethe_paint_head.png");
+    let material = materials.add(ColorMaterial {
+        texture: Some(player_texture),
+        color: Color::WHITE,
+        alpha_mode: Default::default(),
+        uv_transform: Default::default(),
+    });
 
     commands.spawn((
         DespawnOnExit(LevelScreens::Level),
         transform,
         Mesh2d(meshes.add(Rectangle::new(20.0, 20.0))),
+        MeshMaterial2d(material),
         Collider::rectangle(20.0, 20.0),
         RigidBody::Dynamic,
         Mass(1.0),
         Friction::new(0.3),
-        MeshMaterial2d(materials.add(Color::srgb(0.0, 0.2, 0.5))),
         PlayerMarker,
     ));
 }

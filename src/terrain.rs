@@ -41,6 +41,7 @@ pub fn spawn_level(
     mut colors: ResMut<Assets<ColorMaterial>>,
     mut images: ResMut<Assets<Image>>,
     required: Res<RequiredAssets>,
+    asset_server: Res<AssetServer>,
     mut required_finishes: ResMut<RequiredFinishes>,
     current_level: Res<CurrentLevel>,
 ) {
@@ -114,13 +115,20 @@ pub fn spawn_level(
         kill_spawn.insert(collider);
     }
 
+    let finish_texture: Handle<Image> = asset_server.load("sprites/schaedel.png");
+    let finish_mat = colors.add(ColorMaterial {
+        texture: Some(finish_texture),
+        color: Color::WHITE,
+        alpha_mode: Default::default(),
+        uv_transform: Default::default(),
+    });
     required_finishes.0 = finishes.len() as u32;
     for finish in finishes {
         commands
             .spawn((
                 DespawnOnExit(LevelScreens::Level),
                 Mesh2d(meshes.add(Rectangle::new(20.0, 20.0))),
-                MeshMaterial2d(colors.add(Color::srgb(0.6, 0.6, 0.6))),
+                MeshMaterial2d(finish_mat.clone()),
                 CollisionEventsEnabled,
                 Collider::rectangle(20.0, 20.0),
                 Transform::from_translation(Vec3::new(finish.x + 10.0, finish.y + 10.0, 0.0)),

@@ -11,6 +11,13 @@ use bevy::{
 use crate::{RequiredAssets, screens::Screen};
 pub struct MainScreenPlugin;
 
+#[derive(Component)]
+pub struct CameraIntro {
+    timer: Timer,
+    start_scale: f32,
+    end_scale: f32,
+}
+
 impl Plugin for MainScreenPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup_camera);
@@ -20,7 +27,35 @@ impl Plugin for MainScreenPlugin {
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn(Camera2d);
+    commands.spawn((
+        Camera2d::default(),
+        CameraIntro {
+            timer: Timer::from_seconds(15.0, TimerMode::Once),
+            start_scale: 0.1,
+            end_scale: 1.0,
+        },
+    ));
+}
+
+pub fn camera_intro_zoom(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut Projection, &mut CameraIntro)>,
+) {
+    for (entity, mut projection, mut intro) in &mut query {
+        intro.timer.tick(time.delta());
+
+        let t = intro.timer.fraction();
+        let t = t * t * (3.0 - 2.0 * t); // smoothstep
+
+        if let Projection::Orthographic(ref mut ortho) = *projection {
+            ortho.scale = intro.start_scale + (intro.end_scale - intro.start_scale) * t;
+        }
+
+        if intro.timer.is_finished() {
+            commands.entity(entity).remove::<CameraIntro>();
+        }
+    }
 }
 
 fn setup_ui(mut commands: Commands) {

@@ -1,11 +1,10 @@
 use crate::player::PlayerMarker;
 use avian2d::prelude::LinearVelocity;
 use bevy::input::ButtonInput;
-use bevy::prelude::{KeyCode, Query, Res, Transform, With};
-use log::info;
+use bevy::prelude::{KeyCode, Query, Res, With};
 
 pub fn update_player_position(
-    mut query: Query<(&Transform, &mut LinearVelocity), With<PlayerMarker>>,
+    query: Query<&mut LinearVelocity, With<PlayerMarker>>,
     keys: Res<ButtonInput<KeyCode>>,
 ) {
     // let up_key: KeyCode = KeyCode::KeyW; // unused as of now
@@ -20,12 +19,8 @@ pub fn update_player_position(
 
     let max_horizontal_velocity = 300.0;
 
-    for (i, (transform, mut linear_velocity)) in query.iter_mut().enumerate() {
+    for mut linear_velocity in query {
         if keys.just_pressed(jump_key) {
-            info!(
-                "Player({}) POS {} {} {}!",
-                i, transform.translation.x, transform.translation.y, transform.translation.z
-            );
             linear_velocity.y = 250.0;
         }
         if keys.pressed(left_key) || keys.pressed(KeyCode::ArrowLeft) {
