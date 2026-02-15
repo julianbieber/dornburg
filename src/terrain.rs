@@ -333,8 +333,7 @@ pub fn update_terrain(
                 commands.get_entity(entity).unwrap().remove::<Collider>();
             }
         }
-        let f1 = finishes
-            .get(0)
+        let f1 = finishes.first()
             .cloned()
             .unwrap_or(Vec2::new(10000000.0, 10000000.0));
         let f2 = finishes
@@ -374,7 +373,7 @@ fn update_level1(
     let c = voxels.get(x, y);
     if grow {
         if c {
-            new_voxels.set(x, y, s >= 2 && s < 6);
+            new_voxels.set(x, y, (2..6).contains(&s));
         } else {
             new_voxels.set(x, y, (3..4).contains(&s));
         }
@@ -409,7 +408,7 @@ fn update_level2(
     let c = voxels.get(x, y);
     if grow {
         if c {
-            new_voxels.set(x, y, s >= 2 && s < 6);
+            new_voxels.set(x, y, (2..6).contains(&s));
         } else {
             new_voxels.set(x, y, (3..4).contains(&s) || (s == 0 && n > 4.7));
         }
