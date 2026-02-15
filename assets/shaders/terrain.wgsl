@@ -23,8 +23,9 @@ fn cos_s(x: vec3f) -> vec3f {
 }
 
 fn color(base: vec3f, scale: vec3f, freq: vec3f, freq_o: vec3f, x: f32) -> vec3f {
-    return base + scale * cos_s(freq * x + freq_o);
+    return base + scale * cos(freq * x + freq_o);
 }
+
 
 fn rot(r: vec3<f32>) -> mat3x3<f32> {
     let rx = mat3x3<f32>(
@@ -134,6 +135,108 @@ fn background(
     return march(ro, rd, time);
 }
 
+
+fn line(coord: f32, spacing: f32, thickness: f32) -> bool {
+    return step((abs(coord)) % spacing, thickness) == 0.0;
+}
+
+// the closer we are to a finish, the more brown the wall; furhter away more grey
+// we need parallel horizontal lines and offset vertical lines 
+fn wall(
+    finish_distance: f32,
+    time: f32,
+    player_distance: f32,
+    world_position: vec2f
+) -> vec3f {
+
+    let s = vec2f(34.0, 15.0);
+    let offset_block_id  = round(world_position / s);
+    let x = world_position - s * offset_block_id;
+    var modifier = 0.0;
+    if line(world_position.y, 15.0, 12.0) || line(world_position.x + x.x - offset_block_id.y, 15.0, 11.0){
+        modifier = 0.3;
+    } else {
+        modifier = 1.0;
+    }
+
+    let earth_color = color(
+  vec3f (
+    0.0,
+    0.0,
+    0.0,
+  ),
+  vec3f (
+    0.49555808,
+    0.226957,
+    0.0,
+  ),
+  vec3f (
+    0.71472687,
+    0.7101762,
+    0.34810132,
+  ),
+  vec3f (
+    0.52731574,
+    0.4745929,
+    0.030067481,
+  ),
+       0.0 
+    );
+
+    let wall_color = color(
+  vec3f (
+    0.0,
+    0.0,
+    0.0,
+  ),
+  vec3f (
+    0.21543397,
+    0.21561927,
+    0.21857274,
+  ),
+  vec3f (
+    0.7583676,
+    0.7664614,
+    0.76142216,
+  ),
+  vec3f (
+    0.0,
+    0.0,
+    0.0,
+  ),
+0.0        
+    );
+
+    return mix(earth_color, wall_color, 1.0 - (finish_distance)) * modifier;
+
+
+    
+
+    // return vec3f(step((abs(world_position.x +x.x - offset_block_id.y)) % 15.0, 11.0));
+    
+    // return vec3f(color(
+    //         vec3f(
+    //             0.0568133,
+    //             0.015539987,
+    //             0.0,
+    //         ),
+    //         vec3f(
+    //             0.2,
+    //             0.0,
+    //             0.21633771,
+    //         ),
+    //         vec3f(
+    //             0.9478618,
+    //             0.43700445,
+    //             1.0,
+    //         ),
+    //         vec3f(
+    //         0.0,0.0,finish_distance
+    //         ),
+    //         dotnoise(vec3f(world_position.x * 0.002, world_position.y * 0.002, time), time)
+    //     )*(1.0 - (player_distance / 400.0)));
+    }
+
 @fragment
 fn fragment(
     mesh: VertexOutput,
@@ -149,7 +252,8 @@ fn fragment(
     let f3_d = length(mesh.world_position.xy - f3);
 
 
-    let f_d = ((1280.0*2.0) - min(f3_d, min(f1_d, f2_d)))/1280.0;
+    let f = min(f3_d, min(f1_d, f2_d));
+    let f_d = 1.0 - smoothstep(0.0, 1280.0, f);
     
     if distance_to_player > 350.0 {
         return vec4f(0.0, 0.0, 0.0, 1.0);
@@ -185,28 +289,9 @@ fn fragment(
         )* (1.0 - (distance_to_player / 400.0)), 1.0);
     }
 
+        // return vec4<f32>(wall(f_d, time, distance_to_player, mesh.world_position.xy), 1.0);
     if is_set {
-        return vec4<f32>(color(
-            vec3f(
-                0.0568133,
-                0.015539987,
-                0.0,
-            ),
-            vec3f(
-                0.2,
-                0.0,
-                0.21633771,
-            ),
-            vec3f(
-                0.9478618,
-                0.43700445,
-                1.0,
-            ),
-            vec3f(
-            0.0,0.0,f_d
-            ),
-            dotnoise(vec3f(mesh.world_position.x * 0.002, mesh.world_position.y * 0.002, time), time)
-        )*(1.0 - (distance_to_player / 400.0)), 1.0);
+        return vec4<f32>(wall(f_d, time, distance_to_player, mesh.world_position.xy), 1.0);
     } else {
         return vec4f(background(mesh.uv, vec2f(1280.0, 1280.0), time*0.2), 1.0) * (1.0 - (distance_to_player / 400.0));
     }
