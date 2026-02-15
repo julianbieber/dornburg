@@ -4,7 +4,7 @@ use bevy::{
     ui_widgets::{Activate, observe},
 };
 
-use crate::{screens::Screen, terrain::RequiredFinishes};
+use crate::{gameplay::RunStartTime, screens::Screen, terrain::RequiredFinishes};
 
 pub struct LevelPlugin;
 
@@ -17,6 +17,7 @@ impl Plugin for LevelPlugin {
         app.add_systems(OnEnter(LevelScreens::Intermission), spawn_intermission);
         app.add_systems(OnEnter(LevelScreens::Level), spawn_timer);
         app.add_systems(OnEnter(LevelScreens::Level), spawn_missing_finishes);
+        app.add_systems(OnEnter(LevelScreens::GameEnd), display_end);
         app.add_systems(
             Update,
             (update_timer, update_finish_text).run_if(in_state(LevelScreens::Level)),
@@ -259,9 +260,51 @@ fn update_timer(
         next.set(LevelScreens::Restart);
     }
 
-    // let total_time = timer.1.timer.duration().as_secs_f32();
-
     timer.0.x = timer.2.content_size.x * timer.1.timer.fraction();
+}
 
-    // timer.0.0 = content;
+fn display_end(mut commands: Commands, start: Res<RunStartTime>) {
+    let i = start.0.elapsed();
+    commands.spawn((
+        DespawnOnExit(LevelScreens::GameEnd),
+        Node {
+            display: Display::Flex,
+            flex_direction: FlexDirection::Column,
+            width: percent(90),
+            height: percent(90),
+            margin: UiRect::all(Val::Auto),
+            row_gap: px(10),
+            ..Default::default()
+        },
+        children![
+            (
+                Node {
+                    width: percent(100),
+                    height: percent(80),
+                    padding: UiRect::all(px(16.0)),
+                    ..Default::default()
+                },
+                BackgroundColor(Color::srgb(0.15, 0.15, 0.15)),
+                children![Text::new(format!("You woke up after: {i:?}"))],
+            ),
+            (
+                button(
+                    ButtonProps::default(),
+                    (),
+                    Spawn(Text::new("Back to Main Menu"))
+                ),
+                observe(go_to_main),
+            ),
+        ],
+    ));
+}
+fn go_to_main(
+    _: On<Activate>,
+    mut current_level: ResMut<CurrentLevel>,
+    mut next: ResMut<NextState<LevelScreens>>,
+    mut next_main: ResMut<NextState<Screen>>,
+) {
+    current_level.0 = 0;
+    next.set(LevelScreens::None);
+    next_main.set(Screen::Main);
 }
