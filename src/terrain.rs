@@ -333,7 +333,8 @@ pub fn update_terrain(
                 commands.get_entity(entity).unwrap().remove::<Collider>();
             }
         }
-        let f1 = finishes.first()
+        let f1 = finishes
+            .first()
             .cloned()
             .unwrap_or(Vec2::new(10000000.0, 10000000.0));
         let f2 = finishes
