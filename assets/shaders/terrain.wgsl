@@ -7,6 +7,9 @@ struct VertexOutput {
 struct CustomMaterial {
     player: vec4f,
 }
+struct CustomMaterialI {
+    v: vec4i,
+}
 
 @group(2) @binding(0) var height_texture: texture_2d<f32>;
 @group(2) @binding(1) var height_texture_sampler: sampler;
@@ -16,6 +19,7 @@ struct CustomMaterial {
 @group(2) @binding(5) var kill_texture_sampler: sampler;
 @group(2) @binding(6) var<uniform> player_position: CustomMaterial;
 @group(2) @binding(7) var<uniform> f1_position: CustomMaterial;
+@group(2) @binding(8) var<uniform> level: CustomMaterialI;
 
 
 fn cos_s(x: vec3f) -> vec3f {
@@ -50,8 +54,8 @@ fn dotnoise(x: vec3f, time: f32) -> f32 {
     var a = 0.0;
     var p = x;
     for (var i: i32 = 0; i < 4; i = i + 1) {
-        p = p * rot(vec3(time, time, 1.4*time * 1.0/f32(i+1)));
-        p+=1.0;
+        p = p * rot(vec3(time, time, 1.4 * time * 1.0 / f32(i + 1)));
+        p += 1.0;
         a += dot(sin(p), sin(p.yzx));
         a *= 0.5;
     }
@@ -59,11 +63,11 @@ fn dotnoise(x: vec3f, time: f32) -> f32 {
     return a;
 }
 
-fn dotnoise_static(x: vec3f ) -> f32 {
+fn dotnoise_static(x: vec3f) -> f32 {
     var a = 0.0;
     var p = x;
     for (var i: i32 = 0; i < 4; i = i + 1) {
-        p = p * rot(vec3(0.2, 0.3, 1.4*0.3 * 1.0/f32(i+1)));
+        p = p * rot(vec3(0.2, 0.3, 1.4 * 0.3 * 1.0 / f32(i + 1)));
         a += dot(sin(p), sin(p.yzx));
     }
 
@@ -76,37 +80,67 @@ fn billow(v: vec3f, time: f32) -> f32 {
     var a = 1.0;
     var t = 0.0;
 
-    for (var i = 0; i < 3; i = i+1) {
-        t += abs(a*dotnoise(v*lun, time));
+    for (var i = 0; i < 3; i = i + 1) {
+        t += abs(a * dotnoise(v * lun, time));
         a *= dmp;
-        
     }
     return t;
 }
 
-fn density_color(d: f32) -> vec3f {
+fn density_color(d: f32, p: vec3f) -> vec3f {
     let c = pow(2.3, -d);
 
     var out_c = vec3f(0.0);
-    for (var i = 0; i < 4; i = i+ 1) {
-        out_c += color(vec3f(0.0), vec3f(0.1, 0.4, 0.3), vec3f(1.0, 2.0, 3.0), vec3f(0.0), billow(out_c+c, 0.0));
-
+    for (var i = 0; i < level.v.x+1; i = i + 1) {
+        out_c += color(vec3f(0.0), vec3f(0.1, 0.4, 0.3), vec3f(1.0, 2.0, 3.0), vec3f(0.0), billow(out_c + c, 0.0));
+        out_c *= rot(p);
     }
 
     return abs(tanh(out_c * c));
+}
+
+fn fold(p: vec3f, n: vec3f, d:f32) -> vec3f {
+    let dist = dot(p, n)+d;
+    if dist < 0.0 {
+        return -2.0 * dist * n + p;
+    } else {
+        return p;
+    }
+}
+
+fn map(p: vec3f, time: f32) -> f32 {
+    let s = 30.0;
+    let id = round(p/s);
+    var r = p - s*id;
+    r = fold(r, normalize(r), 0.1);
+
+    var m = 10000.0; //length(r) - 1.0 - sin(length(id))*3.0;
+
+
+    var kif_p  = r;
+    for (var i = 0; i< level.v.x + 1; i = i + 1) {
+        kif_p = fold(kif_p, normalize(r), 0.2);
+        kif_p *= rot(vec3f(0.1, 0.2, 0.3)*p+time);
+        kif_p += 0.5;
+        let l = length(kif_p) - 0.5;
+        m = min(l, m);
+    }
+
+
     
+    return m*0.9;
 }
 
 fn march(ro: vec3f, rd: vec3f, time: f32) -> vec3f {
     var t: f32 = 0.0;
-    var acc: vec3f= vec3f(0.0);
+    var acc: vec3f = vec3f(0.0);
 
     for (var i: i32 = 0; i < 100; i = i + 1) {
         let p: vec3f = ro + rd * t;
-        let d: f32 = billow(p, time);
+        let d: f32 = map(p+player_position.player.xyz*0.02, time);
 
-        if (d < 1.01) {
-            acc += density_color(abs(d));
+        if d < 0.001 {
+            acc += density_color(abs(d), p+time+player_position.player.xyz*0.001);
             acc *= length(tanh(acc)) * 0.3;
         }
 
@@ -122,7 +156,7 @@ fn background(
     iResolution: vec2f,
     time: f32,
 ) -> vec3f {
-    let ro: vec3f = vec3f(time*time, time, -10.0);
+    let ro: vec3f = vec3f(0.0, 0.0, -10.0);
 
     var rd: vec3f = vec3f(uv.x, uv.y, 0.0);
     rd = rd - vec3f(0.5, 0.5, 0.0);
@@ -150,92 +184,65 @@ fn wall(
 ) -> vec3f {
 
     let s = vec2f(34.0, 15.0);
-    let offset_block_id  = round(world_position / s);
+    let offset_block_id = round(world_position / s);
     let x = world_position - s * offset_block_id;
     var modifier = 0.0;
-    if line(world_position.y, 15.0, 12.0) || line(world_position.x + x.x - offset_block_id.y, 15.0, 11.0){
+    if line(world_position.y, 15.0, 12.0) || line(world_position.x + x.x - offset_block_id.y, 15.0, 11.0) {
         modifier = 0.3;
     } else {
         modifier = 1.0;
     }
 
     let earth_color = color(
-  vec3f (
-    0.0,
-    0.0,
-    0.0,
-  ),
-  vec3f (
-    0.49555808,
-    0.226957,
-    0.0,
-  ),
-  vec3f (
-    0.71472687,
-    0.7101762,
-    0.34810132,
-  ),
-  vec3f (
-    0.52731574,
-    0.4745929,
-    0.030067481,
-  ),
-       0.0 
+        vec3f(
+            0.0,
+            0.0,
+            0.0,
+        ),
+        vec3f(
+            0.49555808,
+            0.226957,
+            0.0,
+        ),
+        vec3f(
+            0.71472687,
+            0.7101762,
+            0.34810132,
+        ),
+        vec3f(
+            0.52731574,
+            0.4745929,
+            0.030067481,
+        ),
+        0.0
     );
 
     let wall_color = color(
-  vec3f (
-    0.0,
-    0.0,
-    0.0,
-  ),
-  vec3f (
-    0.21543397,
-    0.21561927,
-    0.21857274,
-  ),
-  vec3f (
-    0.7583676,
-    0.7664614,
-    0.76142216,
-  ),
-  vec3f (
-    0.0,
-    0.0,
-    0.0,
-  ),
-0.0        
+        vec3f(
+            0.0,
+            0.0,
+            0.0,
+        ),
+        vec3f(
+            0.21543397,
+            0.21561927,
+            0.21857274,
+        ),
+        vec3f(
+            0.7583676,
+            0.7664614,
+            0.76142216,
+        ),
+        vec3f(
+            0.0,
+            0.0,
+            0.0,
+        ),
+        0.0
     );
 
     return mix(earth_color, wall_color, 1.0 - (finish_distance)) * modifier;
-
-
-    
-
-    // return vec3f(step((abs(world_position.x +x.x - offset_block_id.y)) % 15.0, 11.0));
-    
-    // return vec3f(color(
-    //         vec3f(
-    //             0.0568133,
-    //             0.015539987,
-    //             0.0,
-    //         ),
-    //         vec3f(
-    //             0.2,
-    //             0.0,
-    //             0.21633771,
-    //         ),
-    //         vec3f(
-    //             0.9478618,
-    //             0.43700445,
-    //             1.0,
-    //         ),
-    //         vec3f(
-    //         0.0,0.0,finish_distance
-    //         ),
-    //         dotnoise(vec3f(world_position.x * 0.002, world_position.y * 0.002, time), time)
-    //     )*(1.0 - (player_distance / 400.0)));
-    }
+}
 
 @fragment
 fn fragment(
@@ -254,14 +261,14 @@ fn fragment(
 
     let f = min(f3_d, min(f1_d, f2_d));
     let f_d = 1.0 - smoothstep(0.0, 1280.0, f);
-    
+
     if distance_to_player > 350.0 {
         return vec4f(0.0, 0.0, 0.0, 1.0);
     }
     var uv = mesh.uv;
     let time = textureSample(time_texture, time_texture_sampler, mesh.uv.yx).r;
     let r = distance_to_player / 200.0-1.0;
-    uv += (sin(vec2(dotnoise(vec3(time), 0.0), dotnoise(vec3(time), 1.0)))*0.013 )* clamp(r, 0.0, 1.0);
+    uv += (sin(vec2(dotnoise(vec3(time), 0.0), dotnoise(vec3(time), 1.0))) * 0.013) * clamp(r, 0.0, 1.0);
     let is_set = textureSample(height_texture, height_texture_sampler, uv.yx).r > 0.5;
     let kill = textureSample(kill_texture, kill_texture_sampler, uv.yx).r > 0.5;
 
@@ -285,14 +292,14 @@ fn fragment(
             vec3f(
                 0.0
             ),
-            dotnoise(vec3f(mesh.world_position.x * 0.02, mesh.world_position.y * 0.02, time*10.0), time)
-        )* (1.0 - (distance_to_player / 400.0)), 1.0);
+            dotnoise(vec3f(mesh.world_position.x * 0.02, mesh.world_position.y * 0.02, time * 10.0), time)
+        ) * (1.0 - (distance_to_player / 400.0)), 1.0);
     }
 
         // return vec4<f32>(wall(f_d, time, distance_to_player, mesh.world_position.xy), 1.0);
     if is_set {
         return vec4<f32>(wall(f_d, time, distance_to_player, mesh.world_position.xy), 1.0);
     } else {
-        return vec4f(background(mesh.uv, vec2f(1280.0, 1280.0), time*0.2), 1.0) * (1.0 - (distance_to_player / 400.0));
+        return vec4f(background(uv, vec2f(1280.0, 1280.0), time * 0.2), 1.0) * (1.0 - (distance_to_player / 400.0));
     }
 }

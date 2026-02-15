@@ -93,6 +93,7 @@ pub fn spawn_level(
             kill: images.add(killzones.as_tex()),
             player: Vec4::new(0.0, 0.0, f32::INFINITY, f32::INFINITY),
             f1: Vec4::INFINITY,
+            level: IVec4::new(current_level.0 as i32, 0, 0, 0),
         })),
         voxels.clone(),
         time,
@@ -350,6 +351,7 @@ pub fn update_terrain(
             kill: images.add(killzones.as_tex()),
             player: Vec4::new(p.x, p.y, f1.x, f1.y),
             f1: Vec4::new(f2.x, f2.y, f3.x, f3.y),
+            level: IVec4::new(current_level.0 as i32, 0, 0, 0),
         })
     }
 }
@@ -777,6 +779,8 @@ pub struct TerrainMaterial {
     pub player: Vec4,
     #[uniform(7)]
     pub f1: Vec4,
+    #[uniform(8)]
+    pub level: IVec4,
 }
 
 impl Material2d for TerrainMaterial {
