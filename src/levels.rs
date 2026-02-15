@@ -45,54 +45,13 @@ fn spawn_intermission(
     _current_level: Res<CurrentLevel>,
     assets: Res<RequiredAssets>,
 ) {
-    let intermission_text_0 = "The candle burned low beside the bed, its flame bending as if \
-    listening. Shadows pooled in the corners of the chamber like ink reluctant to dry. \
-    Upon the small table rested the skull, pale and patient, as though waiting its turn to speak. \
-    He watched it with the weary devotion of a sentinel guarding a silent gate. \
-    He had long ago convinced himself that bone could remember. \
-    Tonight it seemed to remember too much.\n\nCould laughter survive the earth's compression? \
-    The skull did not answer, yet its silence shifted shape.";
+    let intermission_text_0 = "Are you the skull I seek? The skull of my deceased friend?\nWhy dont you answer me?\\nWhy do you just look at me with those empty eyes, none of your former wit left.\n\nI must search further.";
 
-    let intermission_text_1 = "He keeps the skull close, as though proximity might quiet the \
-    ache that followed the lowering of the coffin. Loss has a way of widening the room at night; \
-    every corner feels farther than it should, every silence too deliberate. He tells himself \
-    that friendship cannot be misplaced, that what was shared must still cling to the bone like \
-    a final warmth. And yet doubt seeps in. What if the earth, indifferent and hurried, returned \
-    the wrong relic? What if devotion has fastened itself to a stranger's remains? He studies \
-    the ridges and hollows for some private signature, but grief blurs the features of memory \
-    . The unknown presses against him like a second darkness behind his eyes, and despair \
-    whispers that certainty was buried with the body. Even as he mourns, mistrust coils through \
-    his sorrow—of the gravediggers, of the scholars, of his own recollection. He longs to believe \
-    he keeps vigil over his friend, yet cannot silence the fear that he has been confiding in an \
-    impostor, and that his mourning itself has chosen the wrong companion.";
+    let intermission_text_1 = "A new skull found, I must ask again! Are you the skull I seek? The skull of my deceased friend? I have come to rescue you out of this decaying ruin. What is this place you have been buried in? Why does nothing stay static? What is is ever shifting crypt?\n\nee ahm noht teh skooll yohoo sehehk! lehahveh meh toh rehst, teh kahngeh een tees pahlceh ees cohmfohrteeng fohr meh een my ehtehrnahl rehst.";
 
-    let intermission_text_2 = "The number returns to him without invitation: twenty-three. It \
-    tolls through his thoughts like a muted bell, appearing in the hour he wakes, in the steps from \
-    bed to table, in the restless counting of breaths before dawn. He cannot say why it matters, only \
-    that it does, as if some hidden arithmetic governs the fate of bones and names. There had been \
-    talk, once, of clarification—of records examined and ledgers opened—but the mayor proved too \
-    languid in his office, content with wax seals and half-answers, unwilling to disturb the dust of \
-    official certainty. A nobleman, affronted by petitions and propriety alike, had barred the way to \
-    a more fitting resting place, citing order while practicing obstruction. And so the dead had been \
-    gathered without poetry, consigned to a mass grave in Weimar where distinctions dissolved into \
-    soil. Twenty-three bodies, perhaps more. Twenty-three chances for error. He cannot escape the \
-    suspicion that somewhere in that careless arithmetic, devotion was miscounted, and that he now \
-    keeps vigil not over a friend, but over the consequence of another man’s indolence.";
+    let intermission_text_2 = "Why are there so many skulls? I only paid the grave digger to desecrate a singular grave. Are you haunting me for the sin of needing to speak to you again?\n\nSilence from the three skulls, I feel their discerning stares following me.";
 
-    let intermission_text_3 = "At last he allows the thought to settle without resistance: this
-    skull does not belong to the one he knew. Whatever warmth once animated his friend has withdrawn
-    beyond retrieval, and no vigil, however faithful, can summon it back into bone. The features he
-    studies so intently yield nothing familiar; they are a geography without memory. The friend is
-    gone—not misplaced, not mislabeled, but gone in the only way that admits no correction.\n \nTime, \
-    indifferent and meticulous, will sort the matter as it sorts all things. It will peel away
-    conjecture and devotion alike, leaving only the stark outline of events. Records will outlive
-    intention. Whispers will harden into anecdote, and anecdote into verdict. In that slow unfolding, \
-    his motives will matter less than the spectacle.\n\nHe sees already how the story will be told. \
-    Not of loyalty strained by doubt, nor of grief driven to desperate custody, but of theft. He will \
-    be remembered as the man who stole and kept a skull to which he had no rightful claim, guarding \
-    it with a scholar’s obsession and a mourner’s folly. Whatever tenderness once justified his vigil \
-    will fade, and in its place will stand the simpler tale: that he clung to a relic that was never \
-    his, and made of it both companion and crime.";
+    let intermission_text_3 = "Again three, why three? Please talk to me, is either of you my firend? I have been told he was buried in this crypt. The grave has his name, why are there so many? Why have you forsaken me? How can I go on if I dont find you.\n\nheh whoh yohoo sehehk wahs nehvehr hehreh. ee ahm sohrry boot weh cahn noht lehssehn yohoor boordehn.";
 
     let texts = [
         intermission_text_0,
