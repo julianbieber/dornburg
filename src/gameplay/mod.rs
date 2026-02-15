@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use avian2d::prelude::Gravity;
 use avian2d::{PhysicsPlugins, prelude::PhysicsDebugPlugin};
 use bevy::{prelude::*, sprite_render::Material2dPlugin};
@@ -45,5 +47,14 @@ impl Plugin for GameplayPlugin {
                 .run_if(in_state(Screen::Gameplay)),
         );
         app.add_systems(Update, out_of_bounds.run_if(in_state(Screen::Gameplay)));
+        app.insert_resource(RunStartTime(Instant::now()));
+        app.add_systems(OnEnter(Screen::Gameplay), set_start);
     }
+}
+
+#[derive(Resource)]
+pub struct RunStartTime(pub Instant);
+
+fn set_start(mut start: ResMut<RunStartTime>) {
+    start.0 = Instant::now();
 }
