@@ -45,7 +45,7 @@ impl Plugin for GameplayPlugin {
                 .chain()
                 .run_if(in_state(Screen::Gameplay)),
         );
-        app.add_systems(Update, camera_intro_zoom);
+        app.add_systems(Update, camera_intro_zoom.run_if(in_state(Screen::Gameplay)));
         app.add_systems(Update, out_of_bounds.run_if(in_state(Screen::Gameplay)));
         app.insert_resource(RunStartTime(0.0));
         app.add_systems(OnEnter(Screen::Gameplay), set_start);

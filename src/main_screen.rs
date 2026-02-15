@@ -23,12 +23,13 @@ impl Plugin for MainScreenPlugin {
         app.add_systems(Startup, setup_camera);
         app.add_systems(OnEnter(Screen::Main), setup_ui);
         app.add_systems(OnEnter(Screen::Help), setup_help);
+        app.add_systems(Update, handle_escape_help.run_if(in_state(Screen::Help)));
     }
 }
 
 fn setup_camera(mut commands: Commands) {
     commands.spawn((
-        Camera2d::default(),
+        Camera2d,
         CameraIntro {
             timer: Timer::from_seconds(15.0, TimerMode::Once),
             start_scale: 0.1,
@@ -122,7 +123,7 @@ fn go_to_play(
 
 fn setup_help(mut commands: Commands) {
     commands.spawn((
-        DespawnOnExit(Screen::Main),
+        DespawnOnExit(Screen::Help),
         Node {
             display: Display::Flex,
             flex_direction: FlexDirection::Column,
@@ -140,4 +141,10 @@ fn setup_help(mut commands: Commands) {
 
 fn quit(_: On<Activate>, mut commands: Commands) {
     commands.write_message(AppExit::Success);
+}
+
+pub fn handle_escape_help(keys: Res<ButtonInput<KeyCode>>, mut next: ResMut<NextState<Screen>>) {
+    if keys.just_pressed(KeyCode::Escape) {
+        next.set(Screen::Main);
+    }
 }

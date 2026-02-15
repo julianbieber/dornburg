@@ -5,7 +5,7 @@ struct VertexOutput {
 }
 
 struct CustomMaterial {
-    player: vec4f,
+    v: vec4f,
 }
 struct CustomMaterialI {
     v: vec4i,
@@ -20,6 +20,7 @@ struct CustomMaterialI {
 @group(2) @binding(6) var<uniform> player_position: CustomMaterial;
 @group(2) @binding(7) var<uniform> f1_position: CustomMaterial;
 @group(2) @binding(8) var<uniform> level: CustomMaterialI;
+@group(2) @binding(9) var<uniform> global_time: CustomMaterial;
 
 
 fn cos_s(x: vec3f) -> vec3f {
@@ -137,10 +138,10 @@ fn march(ro: vec3f, rd: vec3f, time: f32) -> vec3f {
 
     for (var i: i32 = 0; i < 100; i = i + 1) {
         let p: vec3f = ro + rd * t;
-        let d: f32 = map(p+player_position.player.xyz*0.02, time);
+        let d: f32 = map(p+player_position.v.xyz*0.02, time);
 
         if d < 0.001 {
-            acc += density_color(abs(d), p+time+player_position.player.xyz*0.001);
+            acc += density_color(abs(d), p+time+player_position.v.xyz*0.001);
             acc *= length(tanh(acc)) * 0.3;
         }
 
@@ -244,15 +245,61 @@ fn wall(
     return mix(earth_color, wall_color, 1.0 - (finish_distance)) * modifier;
 }
 
+fn rgb(r: f32, g: f32, b: f32) -> vec3<f32> {
+    return vec3<f32>(r / 255.0, g / 255.0, b / 255.0);
+}
+
+fn rotate2(p: vec2<f32>, angle: f32) -> vec2<f32> {
+    let c = cos(angle);
+    let s = sin(angle);
+    return mat2x2<f32>(c, -s, s, c) * p;
+}
+
+fn fireWisp(u: vec2<f32>, time: f32, scale: f32, i: f32) -> f32 {
+    let path = sin(u.x * (scale + time * 0.8 + i)) * 0.2 +
+               sin(u.x * scale * 2.3 + time * 1.1 + i) * 0.1 +
+               sin(u.x * scale * 4.7 + time * 0.6 + i) * 0.05;
+
+    // Make fire rise upward
+    let p = path + (1.0 - u.y) * 0.3;
+
+    let distance = abs(u.y - p);
+    return 1.0 / (distance * 50.0 + 1.0);
+}
+
+fn fire(vo: vec2<f32>) -> vec3<f32> {
+    let fire_color = rgb(230.0, 100.0, 54.0);
+
+    var fire_intensity: f32 = 0.0;
+    let end: f32 = 20.0;
+
+    var v = rotate2(vo, global_time.v.x*0.1);
+    let o = v;
+    for (var i: f32 = 1.0; i < end; i = i + 1.0) {
+        let scale = end / i;
+        fire_intensity = fire_intensity + fireWisp(v, global_time.v.x*0.1 * i, 10.1 * i + fire_intensity * 10.0, fract(fire_intensity)) * 0.1 * scale;
+        v = v - vec2<f32>(0.0, 0.2 * fire_intensity);
+        v.y = abs(v.y);
+
+        let mv = vec2<f32>(fire_intensity) + v;
+        fire_intensity = fire_intensity - fireWisp(rotate2(mv, scale), global_time.v.x*0.1 * scale, 13.3 * i, min(2.0, 1.0 / fire_intensity)) * 0.4;
+
+        v = rotate2(v, 6.28318530718 / end + v.x);
+    }
+
+    return fire_color * fire_intensity;
+}
+
+
 @fragment
 fn fragment(
     mesh: VertexOutput,
 ) -> @location(0) vec4<f32> {
-    let distance_to_player = (length(player_position.player.xy - mesh.world_position.xy));
+    let distance_to_player = (length(player_position.v.xy - mesh.world_position.xy));
 
-    let f1 = player_position.player.zw;
-    let f2 = f1_position.player.xy;
-    let f3 = f1_position.player.zw;
+    let f1 = player_position.v.zw;
+    let f2 = f1_position.v.xy;
+    let f3 = f1_position.v.zw;
 
     let f1_d = length(mesh.world_position.xy - f1);
     let f2_d = length(mesh.world_position.xy - f2);
@@ -273,27 +320,9 @@ fn fragment(
     let kill = textureSample(kill_texture, kill_texture_sampler, uv.yx).r > 0.5;
 
     if kill {
-        return vec4<f32>(color(
-            vec3f(
-                0.26518637,
-                0.0,
-                0.0,
-            ),
-            vec3f(
-                0.95800865,
-                0.30069998,
-                0.0,
-            ),
-            vec3f(
-                0.8457962,
-                0.83376676,
-                0.11107275,
-            ),
-            vec3f(
-                0.0
-            ),
-            dotnoise(vec3f(mesh.world_position.x * 0.02, mesh.world_position.y * 0.02, time * 10.0), time)
-        ) * (1.0 - (distance_to_player / 400.0)), 1.0);
+        var fire_uv = uv;
+        fire_uv = sin((fire_uv * 1200.0)%20.0);
+        return vec4<f32>(fire(fire_uv) * (1.0 - (distance_to_player / 400.0)), 1.0);
     }
 
         // return vec4<f32>(wall(f_d, time, distance_to_player, mesh.world_position.xy), 1.0);

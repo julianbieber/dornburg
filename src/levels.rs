@@ -230,13 +230,13 @@ fn spawn_timer(mut commands: Commands, assets: Res<RequiredAssets>) {
                 ..Default::default()
             },
             PoemState {
-                timer: Timer::from_seconds(120.0, TimerMode::Once)
+                timer: Timer::from_seconds(90.0, TimerMode::Once)
             },
             children![(
                 Text::new(POEM.replace("\n", " ")),
                 TextFont {
                     font: assets.font.clone().unwrap(),
-                    font_size: 12.0,
+                    font_size: 15.0,
                     ..Default::default()
                 },
                 TextLayout::new_with_justify(Justify::Left).with_linebreak(LineBreak::NoWrap)
@@ -273,7 +273,7 @@ fn update_finish_text(
     finishes: Res<RequiredFinishes>,
 ) {
     let i = finishes.0;
-    if i == 0 {
+    if i == 1 {
         text.0 = format!("Collect {i} bone!");
     } else {
         text.0 = format!("Collect {i} bones!");

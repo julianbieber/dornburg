@@ -1,4 +1,7 @@
-use bevy::{feathers::FeathersPlugins, prelude::*};
+use bevy::{
+    feathers::{FeathersPlugins, dark_theme::create_dark_theme, theme::UiTheme},
+    prelude::*,
+};
 use clap::Parser;
 
 use crate::{gameplay::GameplayPlugin, screens::ScreenPlugin};
@@ -21,6 +24,7 @@ fn main() -> AppExit {
     let opts = Opts::parse();
     App::new()
         .insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
+        .insert_resource(UiTheme(create_dark_theme()))
         .insert_resource(RequiredAssets {
             levels: Vec::new(),
             font: None,
