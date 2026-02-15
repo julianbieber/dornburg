@@ -133,7 +133,7 @@ fn setup_help(mut commands: Commands) {
         },
         ThemeBackgroundColor(tokens::WINDOW_BG),
         children![
-            Text::new("In this little platformer, you collect a number of bones per level.\nIf you touch the 'Lava', go out of bounds, or the timer runs out, the level starts again.\nYou controll the player with:\nA/ArrowLeft: move left\nD/ArrowRight: move right\nSpace: jump\n\nThere are no limits to movement in the air. Go through the levels and enjoy this feaver dream.\n\nGo back to the main menu by pressing ESC from here.")
+            Text::new("In this little platformer, you collect a number of bones per level.\nIf you touch the 'Lava', go out of bounds, or the timer runs out, the level starts again.\nYou control the player with:\nA/ArrowLeft: move left\nD/ArrowRight: move right\nSpace: jump\n\nThere are no limits to movement in the air. Go through the levels and enjoy this fever dream.\n\nGo back to the main menu by pressing ESC from here.")
         ],
     ));
 }
