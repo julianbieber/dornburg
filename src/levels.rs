@@ -10,7 +10,7 @@ pub struct LevelPlugin;
 
 impl Plugin for LevelPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(CurrentLevel(2));
+        app.insert_resource(CurrentLevel(0));
         app.insert_state(LevelScreens::None);
         app.add_systems(OnEnter(Screen::Gameplay), level);
         app.add_systems(OnEnter(LevelScreens::Restart), level);
@@ -37,20 +37,90 @@ pub enum LevelScreens {
 }
 
 fn spawn_intermission(mut commands: Commands, _current_level: Res<CurrentLevel>) {
+    let intermission_text_0 = "The candle burned low beside the bed, its flame bending as if \
+    listening. Shadows pooled in the corners of the chamber like ink reluctant to dry. \
+    Upon the small table rested the skull, pale and patient, as though waiting its turn to speak. \
+    He watched it with the weary devotion of a sentinel guarding a silent gate. \
+    He had long ago convinced himself that bone could remember. \
+    Tonight it seemed to remember too much.\n\nCould laughter survive the earth's compression? \
+    The skull did not answer, yet its silence shifted shape.";
+
+    let intermission_text_1 = "He keeps the skull close, as though proximity might quiet the \
+    ache that followed the lowering of the coffin. Loss has a way of widening the room at night; \
+    every corner feels farther than it should, every silence too deliberate. He tells himself \
+    that friendship cannot be misplaced, that what was shared must still cling to the bone like \
+    a final warmth. And yet doubt seeps in. What if the earth, indifferent and hurried, returned \
+    the wrong relic? What if devotion has fastened itself to a stranger's remains? He studies \
+    the ridges and hollows for some private signature, but grief blurs the features of memory \
+    . The unknown presses against him like a second darkness behind his eyes, and despair \
+    whispers that certainty was buried with the body. Even as he mourns, mistrust coils through \
+    his sorrow—of the gravediggers, of the scholars, of his own recollection. He longs to believe \
+    he keeps vigil over his friend, yet cannot silence the fear that he has been confiding in an \
+    impostor, and that his mourning itself has chosen the wrong companion.";
+
+    let intermission_text_2 = "The number returns to him without invitation: twenty-three. It \
+    tolls through his thoughts like a muted bell, appearing in the hour he wakes, in the steps from \
+    bed to table, in the restless counting of breaths before dawn. He cannot say why it matters, only \
+    that it does, as if some hidden arithmetic governs the fate of bones and names. There had been \
+    talk, once, of clarification—of records examined and ledgers opened—but the mayor proved too \
+    languid in his office, content with wax seals and half-answers, unwilling to disturb the dust of \
+    official certainty. A nobleman, affronted by petitions and propriety alike, had barred the way to \
+    a more fitting resting place, citing order while practicing obstruction. And so the dead had been \
+    gathered without poetry, consigned to a mass grave in Weimar where distinctions dissolved into \
+    soil. Twenty-three bodies, perhaps more. Twenty-three chances for error. He cannot escape the \
+    suspicion that somewhere in that careless arithmetic, devotion was miscounted, and that he now \
+    keeps vigil not over a friend, but over the consequence of another man’s indolence.";
+
+    let intermission_text_3 = "At last he allows the thought to settle without resistance: this
+    skull does not belong to the one he knew. Whatever warmth once animated his friend has withdrawn
+    beyond retrieval, and no vigil, however faithful, can summon it back into bone. The features he
+    studies so intently yield nothing familiar; they are a geography without memory. The friend is
+    gone—not misplaced, not mislabeled, but gone in the only way that admits no correction.\n \nTime, \
+    indifferent and meticulous, will sort the matter as it sorts all things. It will peel away
+    conjecture and devotion alike, leaving only the stark outline of events. Records will outlive
+    intention. Whispers will harden into anecdote, and anecdote into verdict. In that slow unfolding, \
+    his motives will matter less than the spectacle.\n\nHe sees already how the story will be told. \
+    Not of loyalty strained by doubt, nor of grief driven to desperate custody, but of theft. He will \
+    be remembered as the man who stole and kept a skull to which he had no rightful claim, guarding \
+    it with a scholar’s obsession and a mourner’s folly. Whatever tenderness once justified his vigil \
+    will fade, and in its place will stand the simpler tale: that he clung to a relic that was never \
+    his, and made of it both companion and crime.";
+
+    let texts = [
+        intermission_text_0,
+        intermission_text_1,
+        intermission_text_2,
+        intermission_text_3,
+    ];
+
     commands.spawn((
         DespawnOnExit(LevelScreens::Intermission),
         Node {
             display: Display::Flex,
             flex_direction: FlexDirection::Column,
-            width: percent(100),
-            height: percent(100),
+            width: percent(90),
+            height: percent(90),
+            margin: UiRect::all(Val::Auto),
             row_gap: px(10),
             ..Default::default()
         },
-        children![(
-            button(ButtonProps::default(), (), Spawn(Text::new("next level"))),
-            observe(next_level),
-        ),],
+        children![
+            // --- TOP TEXT BOX ---
+            (
+                Node {
+                    width: percent(100),
+                    height: percent(80),
+                    padding: UiRect::all(px(16.0)),
+                    ..Default::default()
+                },
+                BackgroundColor(Color::srgb(0.15, 0.15, 0.15)),
+                children![(Text::new(texts[_current_level.0 as usize]),)],
+            ),
+            (
+                button(ButtonProps::default(), (), Spawn(Text::new("next level"))),
+                observe(next_level),
+            ),
+        ],
     ));
 }
 
