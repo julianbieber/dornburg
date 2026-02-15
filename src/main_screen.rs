@@ -90,16 +90,22 @@ fn go_to_play(
     }
 }
 
-fn setup_help(commands: Commands, known_toolips: Res<TooltipMap>, mut stack: ResMut<TooltipStack>) {
-    spawn_tooltip(
-        commands,
-        &known_toolips.tooltips,
-        &mut stack.entities,
-        "Some text to explain how to play the game containing clickable words, and non clickable words\nand a line break",
-        (px(0), px(0)),
-        false,
-        Screen::Help,
-    );
+fn setup_help(mut commands: Commands) {
+    commands.spawn((
+        DespawnOnExit(Screen::Main),
+        Node {
+            display: Display::Flex,
+            flex_direction: FlexDirection::Column,
+            width: percent(100),
+            height: percent(100),
+            row_gap: px(10),
+            ..Default::default()
+        },
+        ThemeBackgroundColor(tokens::WINDOW_BG),
+        children![
+            Text::new("In this little platformer, you collect a number of bones per level.\nIf you touch the 'Lava', go out of bounds, or the timer runs out, the level starts again.\nYou controll the player with:\nA/ArrowLeft: move left\nD/ArrowRight: move right\nSpace: jump\n\nThere are no limits to movement in the air. Go through the levels and enjoy this feaver dream.\n\nGo back to the main menu by pressing ESC from here.")
+        ],
+    ));
 }
 
 fn quit(_: On<Activate>, mut commands: Commands) {
