@@ -28,7 +28,7 @@ pub fn update_player_position(
             );
             linear_velocity.y = 250.0;
         }
-        if keys.pressed(left_key) {
+        if keys.pressed(left_key) || keys.pressed(KeyCode::ArrowLeft) {
             if linear_velocity.x > directional_change_threshold {
                 linear_velocity.x -= directional_change_base * directional_change_multiplier;
             } else if linear_velocity.x < -max_horizontal_velocity {
@@ -37,7 +37,7 @@ pub fn update_player_position(
                 linear_velocity.x -= directional_change_base;
             }
         }
-        if keys.pressed(right_key) {
+        if keys.pressed(right_key) || keys.pressed(KeyCode::ArrowRight) {
             if linear_velocity.x < directional_change_threshold {
                 linear_velocity.x += directional_change_base * directional_change_multiplier;
             } else if linear_velocity.x > max_horizontal_velocity {
